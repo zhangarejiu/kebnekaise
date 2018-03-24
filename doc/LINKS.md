@@ -17,8 +17,8 @@
     https://docs.python.org/release/3.4.3/library/index.html
     https://www.amazon.com/dp/1118460146
     https://www.youtube.com/watch?v=48-aTzv1_5Q
-    https://archive.is/zubYa
-    https://archive.is/Ts0r4
+    https://www.fscomeau.com/why-technical-analysis-is-bullshit
+    http://www.businessinsider.com/interview-with-cryptocurrency-pump-and-dump-telegram-group-admin-2017-12
 
 ##### GOLD EXCHANGES (Pretty liquid market, 30+ symbols for BTC, tested and approved API: I love it!):
     https://poloniex.com
