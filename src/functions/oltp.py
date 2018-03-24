@@ -22,14 +22,17 @@ class Trader(object):
 
     def probe(self, errors=0):
         """
-        Detecting some good trading opportunities...
+        Main trade loop.
         """
 
         call = locals()
 
         try:
             while not self.Toolkit.halt():
+                self.log('', self)
+                self.log('Detecting some good trading opportunities...', self)
                 t_delta = time.time()
+
                 self._symbols = self.Wrapper.symbols()
                 assert self._symbols is not None
 
@@ -80,11 +83,11 @@ class Trader(object):
             orders = self.Wrapper.orders()
             assert orders is not None
 
-            engaged = {s[0] for a, p, s in self.Wrapper.orders().values()}
+            engaged = {s[0] for a, p, s in orders.values()}
             for currency, (available, _) in balance.items():
                 symbol = currency, 'btc'
 
-                if symbol in self._symbols:
+                if symbol in self._symbols and not self.Toolkit.halt():
                     eligible = available * self._value(*symbol) > self._quota
 
                     if eligible and currency not in engaged:
@@ -106,7 +109,7 @@ class Trader(object):
 
         try:
             self.log('', self)
-            self.log('Reviewing profit targets for your currently alive orders...', self)
+            self.log('Reviewing profit targets for your current positions...', self)
             t_delta = time.time()
 
             orders = self.Wrapper.orders()
@@ -114,9 +117,10 @@ class Trader(object):
 
             if t_delta - self._last > 3600:
                 for oid, (amount, price, symbol) in orders.items():
-                    cancel = self.Wrapper.orders(oid)
-                    assert cancel is not None
-                    self._burn(symbol, -0.1, price)
+                    if not self.Toolkit.halt():
+                        cancel = self.Wrapper.orders(oid)
+                        assert cancel is not None
+                        self._burn(symbol, -0.1, price)
                 self._last = t_delta
 
             t_delta = round(time.time() - t_delta, 3)
@@ -156,8 +160,8 @@ class Trader(object):
         try:
             fee = 1 - self.Wrapper.Fee / 100
             usd_total, btc_total = 0., sum(
-                (a + o) * self._value(c, 'btc')
-                for c, (a, o) in balance.items() if not c.startswith('usd'))
+                (a + o) * self._value(c, 'btc') for c, (a, o) in balance.items()
+                if not (c.startswith('usd') or self.Toolkit.halt()))
 
             ticker = self.Toolkit.ticker(self.Brand, ('btc', 'usdt',))
             assert ticker is not None
@@ -218,7 +222,8 @@ class Trader(object):
             broadway.pop(chosen)
             call['broadway'] = broadway
 
-            if chosen in {s for a, p, s in self.Wrapper.orders().values()}:
+            if chosen in {s for a, p, s in self.Wrapper.orders().values()
+                          if not self.Toolkit.halt()}:
                 current_assets = 'But it\'s one of your current assets: '
 
                 self.log('', self)

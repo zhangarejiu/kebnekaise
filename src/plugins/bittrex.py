@@ -157,7 +157,7 @@ class Wrapper(object):
                 tmp = '-' + order_id.upper()
 
             # Delaying a bit, to allow the site to recognize newly created / canceled orders...
-            time.sleep(9)
+            time.sleep(7)
             return tmp
         except:
             self.err(call)
