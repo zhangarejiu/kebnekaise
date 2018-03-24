@@ -33,8 +33,7 @@ class Wrapper(object):
 
         try:
             req = self._request(0)
-            assert req is not None
-            assert req['result'] is not None
+            assert req['success'] is True
 
             fmt, now = '%Y-%m-%dT%H:%M:%S', time.time()
             tmp = {d['MarketName'].lower().partition('-')[::-2] for d in req['result']
@@ -54,20 +53,18 @@ class Wrapper(object):
 
         try:
             req = self._request(1, symbol)
-            assert req is not None
-            assert req['result'] is not None
-            assert req['result']['sell'] is not None
-            assert req['result']['buy'] is not None
+            assert req['success'] is True
 
-            asks = {d['Rate']: d['Quantity'] for d in req['result']['sell']}
-            bids = {d['Rate']: -d['Quantity'] for d in req['result']['buy']}
+            if None not in req['result'].values():
+                asks = {d['Rate']: d['Quantity'] for d in req['result']['sell']}
+                bids = {d['Rate']: -d['Quantity'] for d in req['result']['buy']}
 
-            if len(asks) * len(bids) > 0:
-                h_ask = (1 + margin / 100) * min(asks)
-                l_bid = (1 - margin / 100) * max(bids)
-                tmp = {k: v for k, v in asks.items() if k <= h_ask}
-                tmp.update({k: v for k, v in bids.items() if k >= l_bid})
-                return tmp
+                if len(asks) * len(bids) > 0:
+                    h_ask = (1 + margin / 100) * min(asks)
+                    l_bid = (1 - margin / 100) * max(bids)
+                    tmp = {k: v for k, v in asks.items() if k <= h_ask}
+                    tmp.update({k: v for k, v in bids.items() if k >= l_bid})
+                    return tmp
         except:
             self.err(call)
 
@@ -80,17 +77,17 @@ class Wrapper(object):
         try:
             cutoff = int(time.time())
             req = self._request(2, (symbol, cutoff,))
-            assert req is not None
-            assert req['result'] is not None
+            assert req['success'] is True
 
-            cutoff -= cutoff % 180
-            tmp = [(timegm(time.strptime(d['TimeStamp'][:19], '%Y-%m-%dT%H:%M:%S')),
-                    [-1, 1][d['OrderType'] == 'BUY'] * d['Quantity'],
-                    d['Price']) for d in req['result']]
-            tmp = [(epoch, amount, price,) for epoch, amount, price in tmp
-                   if cutoff - 1200 < epoch <= cutoff]
-            tmp.reverse()
-            return tmp
+            if req['result'] is not None:
+                cutoff -= cutoff % 180
+                tmp = [(timegm(time.strptime(d['TimeStamp'][:19], '%Y-%m-%dT%H:%M:%S')),
+                        [-1, 1][d['OrderType'] == 'BUY'] * d['Quantity'],
+                        d['Price']) for d in req['result']]
+                tmp = [(epoch, amount, price,) for epoch, amount, price in tmp
+                       if cutoff - 1200 < epoch <= cutoff]
+                tmp.reverse()
+                return tmp
         except:
             self.err(call)
 
@@ -102,8 +99,7 @@ class Wrapper(object):
 
         try:
             req = self._request(3)
-            assert req is not None
-            assert req['result'] is not None
+            assert req['success'] is True
 
             tmp = {'btc': (0., 0.)}
             for d in req['result']:
@@ -124,9 +120,7 @@ class Wrapper(object):
         try:
             opt = round(amount, 8), round(price, 8), symbol
             req = self._request(4, opt)
-            assert req is not None
-            assert req['result'] is not None
-            assert 'uuid' in req['result']
+            assert req['success'] is True
 
             return req['result']['uuid']
         except:
@@ -141,8 +135,7 @@ class Wrapper(object):
         try:
             if order_id is None:
                 req = self._request(5)
-                assert req is not None
-                assert req['result'] is not None
+                assert req['success'] is True
 
                 tmp = {d['OrderUuid']: (
                     [-1, 1][d['OrderType'] == 'LIMIT_BUY'] * d['Quantity'],
@@ -151,9 +144,7 @@ class Wrapper(object):
                 ) for d in req['result']}
             else:
                 req = self._request(5, order_id)
-                assert req is not None
-                assert req['result'] is not None
-                assert 'success' in req and req['success'] is True
+                assert req['success'] is True
                 tmp = '-' + order_id.upper()
 
             # Delaying a bit, to allow the site to recognize newly created / canceled orders...

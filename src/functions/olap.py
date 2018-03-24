@@ -75,7 +75,7 @@ class Indicator(object):
             stats = round(t_delta, 3), round(av_delta, 5)
 
             self.log('', self)
-            self.log('...done in {0} s, average {1} s/symbol.'.format(*stats), self)
+            self.log('...download done in {0} s, average {1} s/symbol.'.format(*stats), self)
             return stats
         except:
             self.err(call)
@@ -114,7 +114,7 @@ class Indicator(object):
             stats = round(t_delta, 3), round(av_delta, 5)
 
             self.log('', self)
-            self.log('...done in {0} s, average {1} s/symbol.'.format(*stats), self)
+            self.log('...update done in {0} s, average {1} s/symbol.'.format(*stats), self)
             return stats
         except:
             self.err(call)

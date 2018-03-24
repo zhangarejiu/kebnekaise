@@ -30,7 +30,7 @@ class Trader(object):
         try:
             while not self.Toolkit.halt():
                 self.log('', self)
-                self.log('[[[ starting trade loop ]]]'.upper(), self)
+                self.log('[ BEGIN: TRADE ]', self)
                 t_delta = time.time()
 
                 self._symbols = self.Wrapper.symbols()
@@ -60,7 +60,10 @@ class Trader(object):
 
                 self.log('', self)
                 self.log('...probing done in {0} seconds.'.format(t_delta), self)
-                self.Toolkit.wait(5)
+                self.log('[ END: TRADE ]', self)
+
+                delay = 5 - t_delta / 60
+                self.Toolkit.wait([1, delay][delay > 1])
         except:
             self.err(call)
             self.probe()
