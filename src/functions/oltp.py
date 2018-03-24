@@ -83,12 +83,14 @@ class Trader(object):
             engaged = {s[0] for a, p, s in self.Wrapper.orders().values()}
             for currency, (available, _) in balance.items():
                 symbol = currency, 'btc'
-                eligible = available * self._value(*symbol) > self._quota
 
-                ticker = self.Toolkit.ticker(self.Brand, symbol)
-                assert ticker is not None
-                if currency not in engaged and symbol in self._symbols and eligible:
-                    self._burn(symbol, -1, ticker[0])
+                if symbol in self._symbols:
+                    eligible = available * self._value(*symbol) > self._quota
+
+                    if eligible and currency not in engaged:
+                        ticker = self.Toolkit.ticker(self.Brand, symbol)
+                        assert ticker is not None
+                        self._burn(symbol, -1, ticker[0])
 
             t_delta = round(time.time() - t_delta, 3)
             self.log('...check done in {0} seconds.'.format(t_delta), self)
@@ -294,7 +296,7 @@ class Trader(object):
             params = {'amount': round(amount, 8), 'price': round(price, 8), 'symbol': symbol, }
             side = ['SELL', 'BUY'][amount > 0]
 
-            self.log('Trying to ' + side + ': ' + symbol + '...', self)
+            self.log('Trying to ' + side + ': ' + str(symbol) + '...', self)
             self.log('Current TICKER is: ' + str(ticker), self)
             self.log('Sending order with parameters: {0}...'.format(params), self)
 

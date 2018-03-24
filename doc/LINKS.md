@@ -16,9 +16,9 @@
 ##### DOCUMENTS (Some references, ideas, trends or reminders...):
     https://docs.python.org/release/3.4.3/library/index.html
     https://www.amazon.com/dp/1118460146
-    https://archive.is/zubYa        [why-technical-analysis-is-bullshit]
-    https://archive.is/Ts0r4        [interview-with-cryptocurrency-pump-and-dump-telegram-group-admin]
-    https://www.youtube.com/watch?v=48-aTzv1_5Q        [TOP 5 Cryptocurrency Trading Bots - Crypto Trading Bot Review]
+    https://www.youtube.com/watch?v=48-aTzv1_5Q
+    https://archive.is/zubYa
+    https://archive.is/Ts0r4
 
 ##### GOLD EXCHANGES (Pretty liquid market, 30+ symbols for BTC, tested and approved API: I love it!):
     https://poloniex.com
@@ -29,7 +29,7 @@
     https://www.mercadobitcoin.com.br
     https://bitcointrade.com.br
 
-##### UNKNOWN EXCHANGES (Seems like interesting, but I have not tested them yet: see 'src/plugins/sandbox/'):
+##### UNKNOWN EXCHANGES (Seems like interesting, but I have not tested/implemented them yet: see 'src/plugins/sandbox/'):
     https://www.binance.com
     https://www.livecoin.net
 
