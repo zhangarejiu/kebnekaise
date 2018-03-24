@@ -22,7 +22,7 @@ class Trader(object):
 
     def probe(self, errors=0):
         """
-        Main trade loop.
+        Detecting some good trading opportunities...
         """
 
         call = locals()
@@ -30,7 +30,7 @@ class Trader(object):
         try:
             while not self.Toolkit.halt():
                 self.log('', self)
-                self.log('Detecting some good trading opportunities...', self)
+                self.log('[[[ starting trade loop ]]]'.upper(), self)
                 t_delta = time.time()
 
                 self._symbols = self.Wrapper.symbols()
