@@ -13,7 +13,7 @@ class Indicator(object):
 
         self.Wrapper = wrapper
         self.Brand = self.Wrapper.Brand
-        self._cache = [{}, {}, {}]
+        self._cache = [{}, {}, {}, ]
 
         self.Toolkit = self.Wrapper.Toolkit
         self.log, self.err = self.Toolkit.log, self.Toolkit.err
@@ -27,19 +27,16 @@ class Indicator(object):
         call = locals()
 
         try:
+            def _index(branch, symbol):
+                return 1 + self._cache[2][branch].index(symbol)
+
             if not cached:
                 self._download(symbols)
             self._update()
 
-            common = set(
-                self._cache[2]['L']) & set(
-                self._cache[2]['M']) & set(
-                self._cache[2]['T'])
-
-            bw = {symbol: self._cache[2]['M'].index(symbol) / (
-                    self._cache[2]['T'].index(symbol) + 1) for symbol in common}
-            bw = set(dict(sorted(bw.items(), key=lambda k: k[1])[-5:]))
-            bw = {s: 1 + self._cache[2]['L'].index(s) for s in bw}
+            bw = {s: _index('M', s) / _index('T', s) for s in self._cache[0]}
+            bw = {k: round(v, 3) for k, v in bw.items() if v > len(bw) / 2}
+            bw = dict(sorted(bw.items(), key=lambda k: k[1])[-5:])
 
             self.log('Current selection is: ' + str(bw), self)
             return bw
@@ -63,11 +60,10 @@ class Indicator(object):
             for s in symbols:
                 if not self.Toolkit.halt():
                     book = self.Wrapper.book(s, 5)
-                    if book is not None:
-                        self._cache[0][s] = book
-
                     history = self.Wrapper.history(s)
-                    if history is not None:
+
+                    if None not in {book, history}:
+                        self._cache[0][s] = book
                         self._cache[1][s] = history
 
             t_delta = time.time() - t_delta
@@ -119,51 +115,6 @@ class Indicator(object):
         except:
             self.err(call)
 
-    def _liquidity(self, book, errors=0):
-        """
-        The multiplicative inverse or reciprocal of the SPREAD.
-        """
-
-        call = locals()
-
-        try:
-            asks, bids = [], []
-
-            for p, a in book.items():
-                if a > 0:
-                    asks.append(p)
-                else:
-                    bids.append(p)
-
-            spread = 100 * (min(asks) / max(bids) - 1)
-            return 1 / spread
-        except:
-            self.err(call)
-
-    def _momentum(self, book, errors=0):
-        """
-        How many % does the volume in BIDS exceed the volume in ASKS?
-
-        From:
-            Algorithmic Trading: Winning Strategies and Their Rationale
-            Chan, Ernest P., 2013 - page 164 (ISBN-13: 978-1118460146)
-        """
-
-        call = locals()
-
-        try:
-            asks, bids = 0, 0
-
-            for v in book.values():
-                if v > 0:
-                    asks += v
-                else:
-                    bids += v
-
-            return 100 * (abs(bids / asks) - 1)
-        except:
-            self.err(call)
-
     def _trend(self, history, errors=0):
         """
         https://www.investopedia.com/terms/o/ohlcchart.asp
@@ -197,5 +148,50 @@ class Indicator(object):
                 return (f + g + h) / 3
             else:
                 return fail
+        except:
+            self.err(call)
+
+    def _momentum(self, book, errors=0):
+        """
+        How many % does the volume in BIDS exceed the volume in ASKS?
+
+        From:
+            Algorithmic Trading: Winning Strategies and Their Rationale
+            Chan, Ernest P., 2013 - page 164 (ISBN-13: 978-1118460146)
+        """
+
+        call = locals()
+
+        try:
+            asks, bids = 0, 0
+
+            for v in book.values():
+                if v > 0:
+                    asks += v
+                else:
+                    bids += v
+
+            return 100 * (abs(bids / asks) - 1)
+        except:
+            self.err(call)
+
+    def _liquidity(self, book, errors=0):
+        """
+        The multiplicative inverse or reciprocal of the SPREAD.
+        """
+
+        call = locals()
+
+        try:
+            asks, bids = [], []
+
+            for p, a in book.items():
+                if a > 0:
+                    asks.append(p)
+                else:
+                    bids.append(p)
+
+            spread = 100 * (min(asks) / max(bids) - 1)
+            return 1 / spread
         except:
             self.err(call)

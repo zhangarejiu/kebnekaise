@@ -23,6 +23,7 @@ class Toolkit(object):
         self.CP = ConfigParser(allow_no_value=True)
         self.CP.read(self.Path + '/bin/conf.ini')
         self.Plugins = self._plugins()
+        self.Quota = 1E-3
 
         self.Phi = (1 + 5 ** .5) / 2  # https://en.wikipedia.org/wiki/Golden_ratio
         self.Greeting = 'This component was successfully started.'
@@ -303,7 +304,6 @@ class Auditor(object):
 
         self.Wrapper = wrapper
         self.Brand = self.Wrapper.Brand
-        self.Fee = 1 - self.Wrapper.Fee / 100
         self._cache = {'errors': 0, 'symbols': [], 'balance': {}, 'orders': [], }
 
         self.Toolkit = self.Wrapper.Toolkit
@@ -416,10 +416,11 @@ class Auditor(object):
             self._cache['balance'] = self.Wrapper.balance()
             self.log('The response was: ' + str(self._cache['balance']), self)
 
-            if self._cache['balance']['btc'][0] < 2E-3:
+            if self._cache['balance']['btc'][0] < self.Toolkit.Quota:
                 self.log('', self)
-                self.log('BALANCE ERROR: please make sure you have at least BTC 0.002 available '
-                         + 'in your account, in order to proceed with other tests.', self)
+                self.log('BALANCE ERROR: please make sure you have at least BTC ' +
+                         str(self.Toolkit.Quota) + ' available in your account, in ' +
+                         'order to proceed with other tests.', self)
                 self._cache['errors'] += 1
         except:
             self.err(call)
@@ -436,19 +437,16 @@ class Auditor(object):
             self.log('Testing [FIRE] functionality in [BUY] mode...', self)
 
             params = {'symbol': self._cache['symbols'][2]}
-            l_ask, h_bid = self.Toolkit.ticker(self.Brand, params['symbol'])
+            price = .97 * self.Toolkit.ticker(self.Brand, params['symbol'])[1]  # h_bid
+            amount = self.Toolkit.Quota / price
+            params.update({'amount': round(amount, 8), 'price': round(price, 8), })
 
-            params.update({'amount': round(self.Fee * 2E-3 / l_ask, 8),
-                           'price': round(.98 * h_bid, 8), })
             self.log('Putting a BUY order with parameters: ' + str(params), self)
             oid = self.Wrapper.fire(**params)
 
             if oid != 0:
                 self._cache['orders'].append(oid)
                 self.log('The response was: ' + str(oid), self)
-
-                self.Wrapper.orders(oid)
-                self.log('(That order has been canceled.)', self)
             else:
                 self.log('Internal error or insufficient funds to make BUY tests...', self)
         except:
@@ -466,9 +464,10 @@ class Auditor(object):
             self.log('Testing [FIRE] functionality in [SELL] mode...', self)
 
             params = {'symbol': ('btc', 'usdt')}
-            l_ask, h_bid = self.Toolkit.ticker(self.Brand, params['symbol'])
+            price = 1.03 * self.Toolkit.ticker(self.Brand, params['symbol'])[0]  # l_ask
+            amount = -1 * self.Toolkit.Quota
+            params.update({'amount': round(amount, 8), 'price': round(price, 8), })
 
-            params.update({'amount': round(-1 * 2E-3, 8), 'price': round(1.02 * l_ask, 8), })
             self.log('Putting a SELL order with parameters: ' + str(params), self)
             oid = self.Wrapper.fire(**params)
 
@@ -492,7 +491,6 @@ class Auditor(object):
             self.log('Testing [ORDERS] functionality...', self)
 
             O = self.Wrapper.orders()
-            self._cache['orders'] = list(O)
             self.log('The response was: ' + str(O), self)
         except:
             self.err(call)
@@ -509,13 +507,14 @@ class Auditor(object):
             self.log('Testing [CANCEL] functionality...', self)
 
             for oid in self._cache['orders']:
-                self.log('', self)
                 params = {'order_id': oid}
 
+                self.log('', self)
                 self.log('Using the following parameters: ' + str(params), self)
                 self.log('The response was: ' + str(self.Wrapper.orders(**params)), self)
 
-            self.log('(Current open orders are: {0})'.format(self.Wrapper.orders()), self)
+            orders = list(self.Wrapper.orders())
+            self.log('(Current open orders are: {0})'.format(orders), self)
         except:
             self.err(call)
             self._cache['errors'] += 1

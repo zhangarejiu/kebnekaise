@@ -53,8 +53,6 @@ class Wrapper(object):
         try:
             req = self._request(1, symbol)
             assert req is not None
-            assert req['asks'] is not None
-            assert req['bids'] is not None
 
             asks = {float(p): a for p, a in req['asks']}
             bids = {float(p): -a for p, a in req['bids']}
@@ -120,7 +118,6 @@ class Wrapper(object):
             opt = round(amount, 8), round(price, 8), symbol
             req = self._request(4, opt)
             assert req is not None
-            assert 'orderNumber' in req
 
             return int(req['orderNumber'])
         except:
@@ -146,7 +143,6 @@ class Wrapper(object):
             else:
                 req = self._request(5, order_id)
                 assert req is not None
-                assert 'success' in req and req['success'] == 1
                 tmp = -order_id
 
             # Delaying a bit, to allow the site to recognize newly created / canceled orders...

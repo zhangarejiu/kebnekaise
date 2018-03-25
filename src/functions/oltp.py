@@ -14,7 +14,7 @@ class Trader(object):
         self.Indicator = indicator
         self.Wrapper = self.Indicator.Wrapper
         self.Brand = self.Wrapper.Brand
-        self._last, self._quota, self._symbols = 0, 1E-3, set()
+        self._last, self._symbols = 0, set()
 
         self.Toolkit = self.Wrapper.Toolkit
         self.log, self.err = self.Toolkit.log, self.Toolkit.err
@@ -33,19 +33,18 @@ class Trader(object):
                 self.log('[ BEGIN: TRADE ]', self)
                 t_delta = time.time()
 
-                self._symbols = self.Wrapper.symbols()
-                assert self._symbols is not None
-
+                self._symbols = self._blue_chips()
                 self._clear()
                 self._review()
+
                 report = self._report()
                 assert report is not None
-                balance, holdings = report
 
                 broadway = self.Indicator.broadway(self._symbols)
                 assert broadway is not None
 
-                if holdings[0] > 2 * self._quota:  # Checking if there's BTC 0.002+ available.
+                balance, holdings = report
+                if holdings[0] > self.Toolkit.Quota:
                     if len(broadway) > 0:
                         self._chase(balance, broadway)
                     else:
@@ -67,6 +66,27 @@ class Trader(object):
         except:
             self.err(call)
             self.probe()
+
+    def _blue_chips(self, errors=0):
+        """
+        Some of the best symbols to trade today.
+        """
+
+        call = locals()
+
+        try:
+            grey_chips = self.Wrapper.symbols()
+            assert grey_chips is not None
+
+            tmp = {tuple(s.split('_'))
+                   for s in self.Toolkit.setup()['blue_chips'].split()} & grey_chips
+
+            if len(tmp) > 0:
+                return tmp
+            else:
+                return grey_chips
+        except:
+            self.err(call)
 
     def _clear(self, errors=0):
         """
@@ -91,12 +111,12 @@ class Trader(object):
                 symbol = currency, 'btc'
 
                 if symbol in self._symbols and not self.Toolkit.halt():
-                    eligible = available * self._value(*symbol) > self._quota
+                    eligible = available * self._value(*symbol) > self.Toolkit.Quota
 
                     if eligible and currency not in engaged:
                         ticker = self.Toolkit.ticker(self.Brand, symbol)
                         assert ticker is not None
-                        self._burn(symbol, -1, ticker[0])
+                        self._burn(symbol, -10, ticker[0])
 
             t_delta = round(time.time() - t_delta, 3)
             self.log('...check done in {0} seconds.'.format(t_delta), self)
@@ -123,7 +143,7 @@ class Trader(object):
                     if not self.Toolkit.halt():
                         cancel = self.Wrapper.orders(oid)
                         assert cancel is not None
-                        self._burn(symbol, -0.1, price)
+                        self._burn(symbol, -0.3, price)
                 self._last = t_delta
 
             t_delta = round(time.time() - t_delta, 3)
@@ -235,7 +255,7 @@ class Trader(object):
                     return self._chase(self.Wrapper.balance(), broadway)
                 else:
                     self.log(current_assets + 'nothing to do.', self)
-            elif balance['btc'][0] < self._quota:
+            elif balance['btc'][0] < self.Toolkit.Quota:
                 self.log('', self)
                 self.log('But apparently all of your funds are engaged already: nothing '
                          + 'to do for now.', self)
@@ -245,8 +265,8 @@ class Trader(object):
 
                 buying = self._burn(chosen, self.Wrapper.Fee / 2)
                 assert buying is not None
-                self.Toolkit.wait()
 
+                self.Toolkit.wait()
                 if buying[1] in self.Wrapper.orders():
                     self.Wrapper.orders(buying[1])
 
@@ -288,15 +308,12 @@ class Trader(object):
 
             if margin > 0:
                 price = coef * ticker[0]
-            else:
-                assert referential is not None
-                price = coef * referential
-            assert price > 0
-
-            if margin > 0:
+                assert price > 0
                 assert quote in balance
                 amount = fee * balance[quote][0] / price
             else:
+                assert referential is not None
+                price = coef * referential
                 if base not in balance:
                     return
                 amount = -1 * balance[base][0]
