@@ -34,8 +34,9 @@ class Indicator(object):
                 self._download(symbols)
             self._update()
 
-            bw = {s: _index('M', s) / _index('T', s) for s in self._cache[0]}
-            bw = {k: round(v, 3) for k, v in bw.items() if v > len(bw) / 2}
+            bw = {s:  (_index('L', s) + _index('M', s)) / _index('T', s)
+                  for s in self._cache[0]}
+            bw = {k: round(v, 3) for k, v in bw.items() if v > 2 * len(bw) / 3}
             bw = dict(sorted(bw.items(), key=lambda k: k[1])[-5:])
 
             self.log('Current selection is: ' + str(bw), self)
