@@ -269,15 +269,22 @@ class Trader(object):
                 self.Toolkit.wait()
                 if buying[1] in self.Wrapper.orders():
                     self.Wrapper.orders(buying[1])
-
                 selling = self._burn(chosen, -5 * self.Wrapper.Fee, buying[0]['price'])
-                assert selling is not None
-                goal = round(100 * (selling[0]['price'] / buying[0]['price'] - 1), 3)
 
                 self.log('', self)
-                self.log('An overall profit of ~' + str(goal) +
-                         '% is initially expected in this operation.', self)
-                return goal
+                if selling is None:
+                    fail = 'Buying in maker-mode for ' + str(chosen) + ' FAILED: '
+
+                    if len(broadway) > 0:
+                        self.log(fail + 'trying another...', self)
+                        return self._chase(self.Wrapper.balance(), broadway)
+                    else:
+                        self.log(fail + 'sorry.', self)
+                else:
+                    goal = round(100 * (selling[0]['price'] / buying[0]['price'] - 1), 3)
+                    self.log('An overall profit of ~' + str(goal) +
+                             '% is initially expected in this operation.', self)
+                    return goal
         except:
             self.err(call)
 
