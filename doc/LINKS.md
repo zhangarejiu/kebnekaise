@@ -1,11 +1,12 @@
 ### Some interesting links (Sorted by relevance):
 
-##### KEBNEKAISE (My work):
+##### KEBNEKAISE (You are here):
     https://kebnekaise.io
     https://github.com/kebnekaise-io/kebnekaise
 
-##### SERVICES (My toolkit):
+##### SERVICES & TOOLS (Without them I can't work):
     https://www.hostwinds.com
+    https://www.jetbrains.com/pycharm
     https://www.bing.com/translator
     https://translate.google.com
     https://live.blockcypher.com
