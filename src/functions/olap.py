@@ -62,7 +62,7 @@ class Indicator(object):
                     book = self.Wrapper.book(s, 5)
                     history = self.Wrapper.history(s)
 
-                    if None not in {book, history}:
+                    if None not in [book, history]:
                         self._cache[0][s] = book
                         self._cache[1][s] = history
 
