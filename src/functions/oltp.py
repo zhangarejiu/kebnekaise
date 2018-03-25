@@ -33,14 +33,14 @@ class Trader(object):
                 self.log('[ BEGIN: TRADE ]', self)
                 t_delta = time.time()
 
-                self._symbols = self._blue_chips()
+                self._symbols = self.Wrapper.symbols()
                 self._clear()
                 self._review()
 
                 report = self._report()
                 assert report is not None
 
-                broadway = self.Indicator.broadway(self._symbols)
+                broadway = self.Indicator.broadway(self._blue_chips())
                 assert broadway is not None
 
                 balance, holdings = report
@@ -75,7 +75,7 @@ class Trader(object):
         call = locals()
 
         try:
-            grey_chips = self.Wrapper.symbols()
+            grey_chips = self._symbols
             assert grey_chips is not None
 
             tmp = {tuple(s.split('_'))
