@@ -34,9 +34,12 @@ class Indicator(object):
                 self._download(symbols)
             self._update()
 
-            bw = {s:  (_index('L', s) + _index('M', s)) / _index('T', s)
-                  for s in self._cache[0]}
-            bw = {k: round(v, 3) for k, v in bw.items() if v > 2 * len(bw) / 3}
+            #   bw = {s:  (_index('L', s) + _index('M', s)) / _index('T', s)
+            #       for s in self._cache[0]}
+            bw = {s: _index('M', s) for s in self._cache[0]}
+
+            #   bw = {k: round(v, 3) for k, v in bw.items() if v > 2 * len(bw) / 3}
+            bw = {k: round(v, 3) for k, v in bw.items()}
             bw = dict(sorted(bw.items(), key=lambda k: k[1])[-5:])
 
             self.log('Current selection is: ' + str(bw), self)
@@ -60,12 +63,14 @@ class Indicator(object):
 
             for s in symbols:
                 if not self.Toolkit.halt():
-                    book = self.Wrapper.book(s, 5)
+                    book = self.Wrapper.book(s, 1)
+
+                if not self.Toolkit.halt():
                     history = self.Wrapper.history(s)
 
-                    if None not in [book, history]:
-                        self._cache[0][s] = book
-                        self._cache[1][s] = history
+                if None not in [book, history]:
+                    self._cache[0][s] = book
+                    self._cache[1][s] = history
 
             t_delta = time.time() - t_delta
             av_delta = t_delta / len(symbols)
@@ -116,42 +121,6 @@ class Indicator(object):
         except:
             self.err(call)
 
-    def _trend(self, history, errors=0):
-        """
-        https://www.investopedia.com/terms/o/ohlcchart.asp
-        """
-
-        call = locals()
-
-        try:
-            p_open, p_high, p_low, p_close = 0, 0, 0, 0
-            h = [(a / abs(a)) * p for _, a, p in history]
-
-            fail = -1E3
-            if len({p > 0 for p in h}) == 1:
-                return fail
-
-            for price in h:
-                if p_open == 0:
-                    p_open = [p_open, price][price > 0]
-                else:
-                    if price > 0:
-                        p_low = [min(p_low, price), price][p_low == 0]
-                    else:
-                        p = abs(price)
-                        p_high = max(p_high, p)
-                        p_close = p
-
-            if p_open * p_high * p_low * p_close > 0:
-                f = 100 * (p_high / p_open - 1)
-                g = 100 * (p_close / p_low - 1)
-                h = 100 * (p_close / p_open - 1)
-                return (f + g + h) / 3
-            else:
-                return fail
-        except:
-            self.err(call)
-
     def _momentum(self, book, errors=0):
         """
         How many % does the volume in BIDS exceed the volume in ASKS?
@@ -164,8 +133,10 @@ class Indicator(object):
         call = locals()
 
         try:
-            asks, bids = 0, 0
+            if self.Toolkit.halt():
+                return -1E3
 
+            asks, bids = 0, 0
             for v in book.values():
                 if v > 0:
                     asks += v
@@ -184,8 +155,10 @@ class Indicator(object):
         call = locals()
 
         try:
-            asks, bids = [], []
+            if self.Toolkit.halt():
+                return -1E3
 
+            asks, bids = [], []
             for p, a in book.items():
                 if a > 0:
                     asks.append(p)
@@ -194,5 +167,43 @@ class Indicator(object):
 
             spread = 100 * (min(asks) / max(bids) - 1)
             return 1 / spread
+        except:
+            self.err(call)
+
+    def _trend(self, history, errors=0):
+        """
+        https://www.investopedia.com/terms/o/ohlcchart.asp
+        """
+
+        call = locals()
+
+        try:
+            fail = -1E3
+            if self.Toolkit.halt():
+                return fail
+
+            h = [(a / abs(a)) * p for _, a, p in history]
+            if len({p > 0 for p in h}) == 1:
+                return fail
+
+            p_open, p_high, p_low, p_close = 0, 0, 0, 0
+            for price in h:
+                if p_open == 0:
+                    p_open = [p_open, price][price > 0]
+                else:
+                    if price > 0:
+                        p_low = [min(p_low, price), price][p_low == 0]
+                    else:
+                        p = abs(price)
+                        p_high = max(p_high, p)
+                        p_close = p
+
+            if p_open * p_high * p_low * p_close > 0:
+                f = 100 * (p_high / p_open - 1)
+                g = 100 * (p_close / p_low - 1)
+                h = 100 * (p_close / p_open - 1)
+                return (f + g + h) / 3
+            else:
+                return fail
         except:
             self.err(call)

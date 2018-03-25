@@ -116,7 +116,7 @@ class Trader(object):
                     if eligible and currency not in engaged:
                         ticker = self.Toolkit.ticker(self.Brand, symbol)
                         assert ticker is not None
-                        self._burn(symbol, -10, ticker[0])
+                        self._burn(symbol, -5., ticker[0])
 
             t_delta = round(time.time() - t_delta, 3)
             self.log('...check done in {0} seconds.'.format(t_delta), self)
@@ -143,7 +143,7 @@ class Trader(object):
                     if not self.Toolkit.halt():
                         cancel = self.Wrapper.orders(oid)
                         assert cancel is not None
-                        self._burn(symbol, -0.3, price)
+                        self._burn(symbol, -.3, price)
                 self._last = t_delta
 
             t_delta = round(time.time() - t_delta, 3)
@@ -238,48 +238,33 @@ class Trader(object):
         try:
             self.log('', self)
             self.log('The selection received was: ' + str(broadway), self)
-
             chosen = sorted(broadway.items(), key=lambda k: k[1])[-1][0]
             self.log('The chosen symbol was: ' + str(chosen), self)
 
-            broadway.pop(chosen)
-            call['broadway'] = broadway
-
+            self.log('', self)
             if chosen in {s for a, p, s in self.Wrapper.orders().values()
                           if not self.Toolkit.halt()}:
-                current_assets = 'But it\'s one of your current assets: '
+                self.log('But it\'s one of your current assets: ' +
+                         'nothing to do.', self)
 
-                self.log('', self)
-                if len(broadway) > 0:
-                    self.log(current_assets + 'trying another...', self)
-                    return self._chase(self.Wrapper.balance(), broadway)
-                else:
-                    self.log(current_assets + 'nothing to do.', self)
             elif balance['btc'][0] < self.Toolkit.Quota:
-                self.log('', self)
-                self.log('But apparently all of your funds are engaged already: nothing '
-                         + 'to do for now.', self)
+                self.log('But apparently all of your funds are engaged already: ' +
+                         'nothing to do.', self)
             else:
-                self.log('', self)
                 self.log('STARTING TRADE PROCEDURES FOR SYMBOL: ' + str(chosen), self)
 
-                buying = self._burn(chosen, self.Wrapper.Fee / 2)
-                assert buying is not None
+                buying = self._burn(chosen, .1)
+                if buying is None: return
 
-                self.Toolkit.wait()
+                self.Toolkit.wait(5)
                 if buying[1] in self.Wrapper.orders():
                     self.Wrapper.orders(buying[1])
-                selling = self._burn(chosen, -5 * self.Wrapper.Fee, buying[0]['price'])
+                selling = self._burn(chosen, -1., buying[0]['price'])
 
                 self.log('', self)
                 if selling is None:
-                    fail = 'Buying in maker-mode for ' + str(chosen) + ' FAILED: '
-
-                    if len(broadway) > 0:
-                        self.log(fail + 'trying another...', self)
-                        return self._chase(self.Wrapper.balance(), broadway)
-                    else:
-                        self.log(fail + 'sorry.', self)
+                    self.log('Buying in maker-mode for ' + str(chosen) + ' FAILED: sorry.', self)
+                    return
                 else:
                     goal = round(100 * (selling[0]['price'] / buying[0]['price'] - 1), 3)
                     self.log('An overall profit of ~' + str(goal) +
@@ -301,8 +286,6 @@ class Trader(object):
         call = locals()
 
         try:
-            self.log('', self)
-
             fee = 1 - self.Wrapper.Fee / 100
             coef = [1 + margin / 100, 1 - margin / 100][maker]
             base, quote = symbol
@@ -314,20 +297,20 @@ class Trader(object):
             assert ticker is not None
 
             if margin > 0:
+                assert quote in balance
                 price = coef * ticker[0]
                 assert price > 0
-                assert quote in balance
                 amount = fee * balance[quote][0] / price
             else:
+                if base not in balance: return
                 assert referential is not None
                 price = coef * referential
-                if base not in balance:
-                    return
                 amount = -1 * balance[base][0]
 
             params = {'amount': round(amount, 8), 'price': round(price, 8), 'symbol': symbol, }
             side = ['SELL', 'BUY'][amount > 0]
 
+            self.log('', self)
             self.log('Trying to ' + side + ': ' + str(symbol) + '...', self)
             self.log('Current TICKER is: ' + str(ticker), self)
             self.log('Sending order with parameters: {0}...'.format(params), self)
