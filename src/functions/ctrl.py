@@ -438,7 +438,7 @@ class Auditor(object):
 
             params = {'symbol': self._cache['symbols'][2]}
             price = .97 * self.Toolkit.ticker(self.Brand, params['symbol'])[1]  # h_bid
-            amount = self.Toolkit.Quota / price
+            amount = (1 - self.Wrapper.Fee / 100) * self.Toolkit.Quota / price
             params.update({'amount': round(amount, 8), 'price': round(price, 8), })
 
             self.log('Putting a BUY order with parameters: ' + str(params), self)
