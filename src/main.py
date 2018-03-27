@@ -24,7 +24,6 @@ def operation(wrapper):
         if tlk.setup()['live_mode'].lower() == 'yes':
             trader.probe()
         else:
-            #   indicator.broadway(trader._blue_chips())
             auditor.test()
 
         tlk.log(spacer, wrapper)

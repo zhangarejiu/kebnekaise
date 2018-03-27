@@ -34,6 +34,8 @@ class Trader(object):
                 t_delta = time.time()
 
                 self._symbols = self.Wrapper.symbols()
+                assert self._symbols is not None
+
                 self._clear()
                 self._review()
 
@@ -69,22 +71,21 @@ class Trader(object):
 
     def _blue_chips(self, errors=0):
         """
-        Some of the best symbols to trade today.
+        https://www.investopedia.com/terms/b/bluechip.asp
         """
 
         call = locals()
 
         try:
-            grey_chips = self._symbols
-            assert grey_chips is not None
-
-            tmp = {tuple(s.split('_'))
-                   for s in self.Toolkit.setup()['blue_chips'].split()} & grey_chips
+            tmp = self._symbols & {
+                (s, 'btc')
+                for s in self.Toolkit.setup()['blue_chips'].split()
+            }
 
             if len(tmp) > 0:
                 return tmp
             else:
-                return grey_chips
+                return self._symbols
         except:
             self.err(call)
 
