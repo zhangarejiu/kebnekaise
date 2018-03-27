@@ -117,7 +117,7 @@ class Trader(object):
                     if eligible and currency not in engaged:
                         ticker = self.Toolkit.ticker(self.Brand, symbol)
                         assert ticker is not None
-                        self._burn(symbol, -5., ticker[0])
+                        self._burn(symbol, -100 * self.Wrapper.Fee, ticker[0])
 
             t_delta = round(time.time() - t_delta, 3)
             self.log('...check done in {0} seconds.'.format(t_delta), self)
@@ -144,7 +144,7 @@ class Trader(object):
                     if not self.Toolkit.halt():
                         cancel = self.Wrapper.orders(oid)
                         assert cancel is not None
-                        self._burn(symbol, -.3, price)
+                        self._burn(symbol, -1 * self.Wrapper.Fee, price)
                 self._last = t_delta
 
             t_delta = round(time.time() - t_delta, 3)
@@ -254,13 +254,13 @@ class Trader(object):
             else:
                 self.log('STARTING TRADE PROCEDURES FOR SYMBOL: ' + str(chosen), self)
 
-                buying = self._burn(chosen, .1)
+                buying = self._burn(chosen, self.Wrapper.Fee / 2)
                 if buying is None: return
 
                 self.Toolkit.wait(5)
                 if buying[1] in self.Wrapper.orders():
                     self.Wrapper.orders(buying[1])
-                selling = self._burn(chosen, -1., buying[0]['price'])
+                selling = self._burn(chosen, -5 * self.Wrapper.Fee, buying[0]['price'])
 
                 self.log('', self)
                 if selling is None:
