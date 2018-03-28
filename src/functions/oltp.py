@@ -36,10 +36,7 @@ class Trader(object):
                 self._symbols = self.Wrapper.symbols()
                 assert self._symbols is not None
 
-                self._clear()
-                self._review()
-
-                report = self._report()
+                report = self._report(self._review(self._clear()))
                 assert report is not None
 
                 broadway = self.Indicator.broadway(self._blue_chips())
@@ -103,11 +100,14 @@ class Trader(object):
                         self._burn(symbol, -100 * self.Wrapper.Fee, ticker[0])
 
             t_delta = round(time.time() - t_delta, 3)
+            self.log('', self)
             self.log('...check done in {0} seconds.'.format(t_delta), self)
+
+            return orders
         except:
             self.err(call)
 
-    def _review(self, errors=0):
+    def _review(self, last_orders, errors=0):
         """
         This will add x% per hour to your targets.
         """
@@ -116,13 +116,15 @@ class Trader(object):
 
         try:
             self.log('', self)
+            self.log('Reviewing profit targets for your current positions...', self)
             t_delta = time.time()
 
             orders = self.Wrapper.orders()
             assert orders is not None
 
-            self.log('Reviewing profit targets for your currently active orders: ' +
-                     str(orders), self)
+            if last_orders != orders:
+                self.log('', self)
+                self.log('Your currently active orders are: ' + str(orders), self)
 
             if t_delta - self._last > 3600:
                 for oid, (amount, price, symbol) in orders.items():
@@ -134,11 +136,14 @@ class Trader(object):
                 self._last = t_delta
 
             t_delta = round(time.time() - t_delta, 3)
+            self.log('', self)
             self.log('...review done in {0} seconds.'.format(t_delta), self)
+
+            return orders
         except:
             self.err(call)
 
-    def _report(self, errors=0):
+    def _report(self, last_orders, errors=0):
         """
         Briefly reporting the current status of your funds and assets.
         """
@@ -149,8 +154,9 @@ class Trader(object):
             orders = self.Wrapper.orders()
             assert orders is not None
 
-            self.log('', self)
-            self.log('Your currently active orders are: ' + str(orders), self)
+            if last_orders != orders:
+                self.log('', self)
+                self.log('Your currently active orders are: ' + str(orders), self)
 
             balance = self.Wrapper.balance()
             assert balance is not None

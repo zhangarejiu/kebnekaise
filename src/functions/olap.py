@@ -56,8 +56,8 @@ class Indicator(object):
 
         try:
             self.log('', self)
-            self.log('Downloading orders BOOK & trades HISTORY information for {0}...'
-                     .format(symbols), self)
+            self.log('Downloading orders BOOK & trades HISTORY information for {0} symbols...'
+                     .format(len(symbols)), self)
             t_delta = time.time()
 
             for s in symbols:
