@@ -36,10 +36,9 @@ class Indicator(object):
 
             #   bw = {s:  (_index('L', s) + _index('M', s)) / _index('T', s)
             #       for s in self._cache[0]}
-            bw = {s: _index('M', s) for s in self._cache[0]}
-
             #   bw = {k: round(v, 3) for k, v in bw.items() if v > 2 * len(bw) / 3}
-            bw = {k: round(v, 3) for k, v in bw.items()}
+
+            bw = {s: _index('M', s) for s in self._cache[0]}
             bw = dict(sorted(bw.items(), key=lambda k: k[1])[-5:])
 
             self.log('Current selection is: ' + str(bw), self)
@@ -57,8 +56,8 @@ class Indicator(object):
 
         try:
             self.log('', self)
-            self.log('Downloading orders BOOK & trades HISTORY information for {0} symbols...'
-                     .format(len(symbols)), self)
+            self.log('Downloading orders BOOK & trades HISTORY information for {0}...'
+                     .format(symbols), self)
             t_delta = time.time()
 
             for s in symbols:

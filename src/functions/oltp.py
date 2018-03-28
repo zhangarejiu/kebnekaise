@@ -69,26 +69,6 @@ class Trader(object):
             self.err(call)
             self.probe()
 
-    def _blue_chips(self, errors=0):
-        """
-        https://www.investopedia.com/terms/b/bluechip.asp
-        """
-
-        call = locals()
-
-        try:
-            tmp = self._symbols & {
-                (s, 'btc')
-                for s in self.Toolkit.setup()['blue_chips'].split()
-            }
-
-            if len(tmp) > 0:
-                return tmp
-            else:
-                return self._symbols
-        except:
-            self.err(call)
-
     def _clear(self, errors=0):
         """
         Checking for idle money.
@@ -106,6 +86,9 @@ class Trader(object):
 
             orders = self.Wrapper.orders()
             assert orders is not None
+
+            self.log('', self)
+            self.log('Your currently active orders are: ' + str(orders), self)
 
             engaged = {s[0] for a, p, s in orders.values()}
             for currency, (available, _) in balance.items():
@@ -126,24 +109,27 @@ class Trader(object):
 
     def _review(self, errors=0):
         """
-        This will add 0.1 % per hour to your targets.
+        This will add x% per hour to your targets.
         """
 
         call = locals()
 
         try:
             self.log('', self)
-            self.log('Reviewing profit targets for your current positions...', self)
             t_delta = time.time()
 
             orders = self.Wrapper.orders()
             assert orders is not None
 
+            self.log('Reviewing profit targets for your currently active orders: ' +
+                     str(orders), self)
+
             if t_delta - self._last > 3600:
                 for oid, (amount, price, symbol) in orders.items():
                     if not self.Toolkit.halt():
-                        cancel = self.Wrapper.orders(oid)
-                        assert cancel is not None
+                        self.log('', self)
+                        self.log('Canceling order [{0}]...'.format(oid), self)
+                        assert self.Wrapper.orders(oid) is not None
                         self._burn(symbol, -1 * self.Wrapper.Fee, price)
                 self._last = t_delta
 
@@ -160,6 +146,12 @@ class Trader(object):
         call = locals()
 
         try:
+            orders = self.Wrapper.orders()
+            assert orders is not None
+
+            self.log('', self)
+            self.log('Your currently active orders are: ' + str(orders), self)
+
             balance = self.Wrapper.balance()
             assert balance is not None
 
@@ -226,6 +218,26 @@ class Trader(object):
 
             else:
                 return 0.
+        except:
+            self.err(call)
+
+    def _blue_chips(self, errors=0):
+        """
+        https://www.investopedia.com/terms/b/bluechip.asp
+        """
+
+        call = locals()
+
+        try:
+            tmp = self._symbols & {
+                (s, 'btc')
+                for s in self.Toolkit.setup()['blue_chips'].split()
+            }
+
+            if len(tmp) > 0:
+                return tmp
+            else:
+                return self._symbols
         except:
             self.err(call)
 
