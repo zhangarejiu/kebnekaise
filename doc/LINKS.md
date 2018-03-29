@@ -19,10 +19,10 @@
     https://www.amazon.com/dp/1118460146
     https://www.youtube.com/watch?v=48-aTzv1_5Q
     https://www.fscomeau.com/why-technical-analysis-is-bullshit
-    http://www.businessinsider.com/interview-with-cryptocurrency-pump-and-dump-telegram-group-admin-2017-12
-    https://theoutline.com/post/3074/inside-the-group-chats-where-people-pump-and-dump-cryptocurrency?zd=1&zi=a3zvz4c2
     https://bitfalls.com/2018/01/12/anatomy-pump-dump-group/
-
+    https://theoutline.com/post/3074/inside-the-group-chats-where-people-pump-and-dump-cryptocurrency
+    http://www.businessinsider.com/interview-with-cryptocurrency-pump-and-dump-telegram-group-admin-2017-12
+    
 ##### GOLD EXCHANGES (Pretty liquid market, 30+ symbols for BTC, tested and approved API: I love it!):
     https://poloniex.com
     https://bittrex.com
