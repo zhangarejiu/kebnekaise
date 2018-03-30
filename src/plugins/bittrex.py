@@ -25,7 +25,7 @@ class Wrapper(object):
         self.Key, self.Secret = self.Toolkit.setup(self.Brand)
         self.log, self.err = self.Toolkit.log, self.Toolkit.err
 
-    def symbols(self, errors=0):
+    def symbols(self, btc_only=True, errors=0):
         """
         """
 
@@ -38,7 +38,9 @@ class Wrapper(object):
             fmt, now = '%Y-%m-%dT%H:%M:%S', time.time()
             tmp = {d['MarketName'].lower().partition('-')[::-2] for d in req['result']
                    if now - timegm(time.strptime(d['TimeStamp'][:19], fmt)) < 3600}
-            tmp = {s for s in tmp if s[1] == 'btc'}
+
+            if btc_only:
+                tmp = {s for s in tmp if s[1] == 'btc'}
 
             if len(tmp) > 0:
                 return tmp
