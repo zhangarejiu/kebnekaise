@@ -1,3 +1,3 @@
-__all__ = ['ctrl', 'olap', 'oltp', ]
+__all__ = ['ctrl', 'dbms', 'olap', 'oltp', ]
 
 __author__ = 'developer@kebnekaise.io'

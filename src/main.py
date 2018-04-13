@@ -17,14 +17,10 @@ def operation(wrapper):
         tlk.log(spacer, wrapper)
         tlk.log(tlk.Greeting, wrapper)
 
-        auditor = ctrl.Auditor(wrapper)
-        indicator = olap.Indicator(wrapper)
-        trader = oltp.Trader(indicator)
-
         if tlk.setup()['live_mode'].lower() == 'yes':
-            trader.probe()
+            oltp.Trader(olap.Indicator(dbms.Database(wrapper))).probe()
         else:
-            auditor.test()
+            ctrl.Auditor(wrapper).test(False)
 
         tlk.log(spacer, wrapper)
         tlk.log('', wrapper)

@@ -4,9 +4,12 @@ import hashlib
 import hmac
 import json
 import time
+import traceback
 
 from calendar import timegm
+from socket import gaierror
 from urllib import parse, request
+from urllib.error import URLError
 
 
 class Wrapper(object):
@@ -27,98 +30,72 @@ class Wrapper(object):
         self.Key, self.Secret = self.Toolkit.setup(self.Brand)
         self.log, self.err = self.Toolkit.log, self.Toolkit.err
 
-    def symbols(self, errors=0):
+    def symbols(self):
         """
         """
-
-        call = locals()
 
         try:
             return
 
         except:
-            self.err(call)
+            self.log(traceback.format_exc())
 
-    def book(self, symbol, margin=3, errors=0):
+    def book(self, symbol, margin=1):
         """
         """
-
-        call = locals()
 
         try:
             return
 
         except:
-            self.err(call)
+            self.log(traceback.format_exc())
 
-    def history(self, symbol, errors=0):
+    def history(self, symbol, cutoff):
         """
         """
-
-        call = locals()
 
         try:
             return
 
         except:
-            self.err(call)
+            self.log(traceback.format_exc())
 
-    def balance(self, errors=0):
+    def balance(self):
         """
         """
-
-        call = locals()
 
         try:
             return
 
         except:
-            self.err(call)
+            self.log(traceback.format_exc())
 
-    def fire(self, amount, price, symbol, errors=0):
+    def fire(self, amount, price, symbol):
         """
         """
-
-        call = locals()
 
         try:
             return
 
         except:
-            self.err(call)
+            self.log(traceback.format_exc())
 
-    def orders(self, order_id=None, errors=0):
+    def orders(self, order_id=None):
         """
         """
-
-        call = locals()
 
         try:
             return
 
         except:
-            self.err(call)
+            self.log(traceback.format_exc())
 
-    def _payload(self, req_uri, signing=True, errors=0):
+    def _request(self, req_uri, signing=True):
         """
         """
-
-        call = locals()
 
         try:
             return
 
         except:
-            self.err(call)
-
-    def _request(self, command, options=None, errors=0):
-        """
-        """
-
-        call = locals()
-
-        try:
-            return
-
-        except:
-            self.err(call)
+            self.log(traceback.format_exc())

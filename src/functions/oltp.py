@@ -1,4 +1,7 @@
+# todo
+
 import time
+import traceback
 
 
 class Trader(object):
@@ -17,15 +20,13 @@ class Trader(object):
         self._last, self._symbols = 0, set()
 
         self.Toolkit = self.Wrapper.Toolkit
-        self.log, self.err = self.Toolkit.log, self.Toolkit.err
+        self.log = self.Toolkit.log
         self.log(self.Toolkit.Greeting, self)
 
-    def probe(self, errors=0):
+    def probe(self):
         """
         Detecting some good trading opportunities...
         """
-
-        call = locals()
 
         try:
             while not self.Toolkit.halt():
@@ -33,27 +34,9 @@ class Trader(object):
                 self.log('[ BEGIN: TRADE ]', self)
                 t_delta = time.time()
 
-                self._symbols = self.Wrapper.symbols()
-                assert self._symbols is not None
-
-                report = self._report(self._review(self._clear()))
-                assert report is not None
-
-                broadway = self.Indicator.broadway(self._blue_chips())
+                broadway = self.Indicator.broadway()
                 assert broadway is not None
 
-                balance, holdings = report
-                if holdings[0] > self.Toolkit.Quota:
-                    if len(broadway) > 0:
-                        self._chase(balance, broadway)
-                    else:
-                        self.log('', self)
-                        self.log('No good symbols enough, waiting for better market '
-                                 + 'conditions...', self)
-                else:
-                    self.log('', self)
-                    self.log('Internal error or insufficient funds, sorry...', self)
-                    self.Toolkit.wait(20)
                 t_delta = round(time.time() - t_delta, 3)
 
                 self.log('', self)
@@ -63,15 +46,12 @@ class Trader(object):
                 delay = 5 - t_delta / 60
                 self.Toolkit.wait([1, delay][delay > 1])
         except:
-            self.err(call)
-            self.probe()
+            self.log(traceback.format_exc(), self)
 
-    def _clear(self, errors=0):
+    def _clear(self):
         """
         Checking for idle money.
         """
-
-        call = locals()
 
         try:
             self.log('', self)
@@ -105,14 +85,12 @@ class Trader(object):
 
             return orders
         except:
-            self.err(call)
+            self.log(traceback.format_exc(), self)
 
-    def _review(self, last_orders, errors=0):
+    def _review(self, last_orders):
         """
         This will add x% per hour to your targets.
         """
-
-        call = locals()
 
         try:
             self.log('', self)
@@ -141,14 +119,12 @@ class Trader(object):
 
             return orders
         except:
-            self.err(call)
+            self.log(traceback.format_exc(), self)
 
-    def _report(self, last_orders, errors=0):
+    def _report(self, last_orders):
         """
         Briefly reporting the current status of your funds and assets.
         """
-
-        call = locals()
 
         try:
             orders = self.Wrapper.orders()
@@ -170,14 +146,12 @@ class Trader(object):
                 *holdings), self)
             return balance, holdings
         except:
-            self.err(call)
+            self.log(traceback.format_exc(), self)
 
-    def _holdings(self, balance, errors=0):
+    def _holdings(self, balance):
         """
         The estimated value of your balance, expressed in BTC and USD.
         """
-
-        call = locals()
 
         try:
             fee = 1 - self.Wrapper.Fee / 100
@@ -196,14 +170,12 @@ class Trader(object):
             usd_total = btc_total * h_bid
             return round(btc_total, 8), round(usd_total, 2)
         except:
-            self.err(call)
+            self.log(traceback.format_exc(), self)
 
-    def _value(self, source, target, errors=0):
+    def _value(self, source, target):
         """
         Tries to return the approximate unit value from one currency to another.
         """
-
-        call = locals()
 
         try:
             fee = 1 - self.Wrapper.Fee / 100
@@ -225,34 +197,12 @@ class Trader(object):
             else:
                 return 0.
         except:
-            self.err(call)
+            self.log(traceback.format_exc(), self)
 
-    def _blue_chips(self, errors=0):
-        """
-        https://www.investopedia.com/terms/b/bluechip.asp
-        """
-
-        call = locals()
-
-        try:
-            tmp = self._symbols & {
-                (s, 'btc')
-                for s in self.Toolkit.setup()['blue_chips'].split()
-            }
-
-            if len(tmp) > 0:
-                return tmp
-            else:
-                return self._symbols
-        except:
-            self.err(call)
-
-    def _chase(self, balance, broadway, errors=0):
+    def _chase(self, balance, broadway):
         """
         Ensures that the given symbol is bought & sold by the best market conditions.
         """
-
-        call = locals()
 
         try:
             self.log('', self)
@@ -290,9 +240,9 @@ class Trader(object):
                              '% is initially expected in this operation.', self)
                     return goal
         except:
-            self.err(call)
+            self.log(traceback.format_exc(), self)
 
-    def _burn(self, symbol, margin, referential=None, maker=True, errors=0):
+    def _burn(self, symbol, margin, referential=None, maker=True):
         """
         Simply runs the 'fire()' method of the Wrapper class: just set
         margin > 0 for BUY or margin < 0 for SELL.
@@ -301,8 +251,6 @@ class Trader(object):
         the "referential" attribute for SELL. All of your available
         balance will be used, for simplicity.
         """
-
-        call = locals()
 
         try:
             fee = 1 - self.Wrapper.Fee / 100
@@ -338,4 +286,4 @@ class Trader(object):
             assert order_id is not None
             return params, order_id
         except:
-            self.err(call)
+            self.log(traceback.format_exc(), self)

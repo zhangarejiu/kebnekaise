@@ -2,9 +2,12 @@ import hashlib
 import hmac
 import json
 import time
+import traceback
 
 from calendar import timegm
+from socket import gaierror
 from urllib import parse, request
+from urllib.error import URLError
 
 
 class Wrapper(object):
@@ -20,41 +23,33 @@ class Wrapper(object):
         """
 
         self.Brand, self.Fee = 'bittrex', .25
+        self.fmt = '%Y-%m-%dT%H:%M:%S'
 
         self.Toolkit = toolkit
         self.Key, self.Secret = self.Toolkit.setup(self.Brand)
-        self.log, self.err = self.Toolkit.log, self.Toolkit.err
+        self.log = self.Toolkit.log
 
-    def symbols(self, btc_only=True, errors=0):
+    def symbols(self):
         """
         """
-
-        call = locals()
 
         try:
-            req = self._request(0)
+            req = self._request('public/getmarketsummaries', False)
             assert req['success'] is True
 
-            fmt, now = '%Y-%m-%dT%H:%M:%S', time.time()
-            tmp = {d['MarketName'].lower().partition('-')[::-2] for d in req['result']
-                   if now - timegm(time.strptime(d['TimeStamp'][:19], fmt)) < 3600}
-
-            if btc_only:
-                tmp = {s for s in tmp if s[1] == 'btc'}
-
-            if len(tmp) > 0:
-                return tmp
+            now = time.time()
+            return {d['MarketName'].lower().partition('-')[::-2] for d in req['result']
+                    if now - timegm(time.strptime(d['TimeStamp'][:19], self.fmt)) < 3600}
         except:
-            self.err(call)
+            self.log(traceback.format_exc(), self)
 
-    def book(self, symbol, margin=3, errors=0):
+    def book(self, symbol, margin=1):
         """
         """
-
-        call = locals()
 
         try:
-            req = self._request(1, symbol)
+            params = {'market': '-'.join(symbol[::-1]), 'type': 'both', }
+            req = self._request('public/getorderbook?' + parse.urlencode(params), False)
             assert req['success'] is True
 
             if None not in req['result'].values():
@@ -67,40 +62,44 @@ class Wrapper(object):
                     tmp = {k: v for k, v in asks.items() if k <= h_ask}
                     tmp.update({k: v for k, v in bids.items() if k >= l_bid})
                     return tmp
+
+        except KeyError:
+            return {}
         except:
-            self.err(call)
+            self.log(traceback.format_exc(), self)
 
-    def history(self, symbol, errors=0):
+    def history(self, symbol, cutoff):
         """
         """
 
-        call = locals()
+        end = int(cutoff - cutoff % 60)
+        start = end - 1200
 
         try:
-            cutoff = int(time.time())
-            req = self._request(2, (symbol, cutoff,))
+            params = {'market': '-'.join(symbol[::-1]), }
+            req = self._request('public/getmarkethistory?' + parse.urlencode(params), False)
             assert req['success'] is True
 
             if req['result'] is not None:
-                cutoff -= cutoff % 180
-                tmp = [(timegm(time.strptime(d['TimeStamp'][:19], '%Y-%m-%dT%H:%M:%S')),
+                tmp = [(timegm(time.strptime(d['TimeStamp'][:19], self.fmt)),
                         [-1, 1][d['OrderType'] == 'BUY'] * d['Quantity'],
                         d['Price']) for d in req['result']]
                 tmp = [(epoch, amount, price,) for epoch, amount, price in tmp
-                       if cutoff - 1200 < epoch <= cutoff]
+                       if start < epoch <= end]
                 tmp.reverse()
                 return tmp
+
+        except KeyError:
+            return []
         except:
-            self.err(call)
+            self.log(traceback.format_exc(), self)
 
-    def balance(self, errors=0):
+    def balance(self):
         """
         """
-
-        call = locals()
 
         try:
-            req = self._request(3)
+            req = self._request(('account/getbalances?', {},))
             assert req['success'] is True
 
             tmp = {'btc': (0., 0.)}
@@ -111,101 +110,83 @@ class Wrapper(object):
                     tmp[d['Currency'].lower()] = (available, on_orders)
             return tmp
         except:
-            self.err(call)
+            self.log(traceback.format_exc(), self)
 
-    def fire(self, amount, price, symbol, errors=0):
+    def fire(self, amount, price, symbol):
         """
         """
-
-        call = locals()
 
         try:
-            opt = round(amount, 8), round(price, 8), symbol
-            req = self._request(4, opt)
+            tmp = {'rate': round(price, 8),
+                   'market': '-'.join(symbol[::-1]), }
+
+            if amount > 0:
+                uri = 'market/buylimit?'
+                tmp.update({'quantity': round(amount, 8), })
+            else:
+                uri = 'market/selllimit?'
+                tmp.update({'quantity': -round(amount, 8), })
+
+            req = self._request((uri, tmp,))
             assert req['success'] is True
 
             return req['result']['uuid']
         except:
-            self.err(call)
+            self.log(traceback.format_exc(), self)
 
-    def orders(self, order_id=None, errors=0):
+    def orders(self, order_id=None):
         """
         """
-
-        call = locals()
 
         try:
             if order_id is None:
-                req = self._request(5)
+                req = self._request(('market/getopenorders?', {},))
                 assert req['success'] is True
 
-                tmp = {d['OrderUuid']: (
-                    [-1, 1][d['OrderType'] == 'LIMIT_BUY'] * d['Quantity'],
-                    d['Limit'],
-                    d['Exchange'].lower().partition('-')[::-2]
-                ) for d in req['result']}
+                tmp = {
+                    d['OrderUuid']: (
+                        [-1, 1][d['OrderType'] == 'LIMIT_BUY'] * d['Quantity'],
+                        d['Limit'],
+                        d['Exchange'].lower().partition('-')[::-2]
+                    )
+                    for d in req['result']
+                }
             else:
-                req = self._request(5, order_id)
+                req = self._request(('market/cancel?', {'uuid': order_id, },))
                 assert req['success'] is True
                 tmp = '-' + order_id.upper()
 
             # Delaying a bit, to allow the site to recognize newly created / canceled orders...
-            time.sleep(7)
+            time.sleep(10)
             return tmp
         except:
-            self.err(call)
+            self.log(traceback.format_exc(), self)
 
-    def _payload(self, req_uri, signing=True, errors=0):
+    def _request(self, req_uri, signing=True):
         """
         """
 
-        call = locals()
+        base_uri = 'https://bittrex.com/api/v1.1/'
 
         try:
-            if signing:
-                req_data = req_uri.encode()
-                sign = hmac.new(self.Secret, req_data, digestmod=hashlib.sha512).hexdigest()
-
-                params = {'url': req_uri, 'data': req_data, 'headers': {'apisign': sign, }, }
-                return json.loads(request.urlopen(request.Request(**params)).read().decode())
-            else:
-                return json.loads(request.urlopen(req_uri).read().decode())
-        except:
-            self.err(call)
-
-    def _request(self, command, options=None, errors=0):
-        """
-        """
-
-        call = locals()
-
-        try:
-            req_address = 'https://bittrex.com/api/v1.1/'
-
             # SECURITY DELAY: in order to NOT get your IP banned!
             time.sleep(1 / 3)
-            konce = {'apikey': self.Key, 'nonce': int(1E3 * time.time()), }
 
-            if command == 0:
-                req_address += 'public/getmarketsummaries'
-            elif command == 1:
-                params = {'market': '-'.join(options[::-1]), 'type': 'both', }
-                req_address += 'public/getorderbook?' + parse.urlencode(params)
-            elif command == 2:
-                params = {'market': '-'.join(options[0][::-1]), }
-                req_address += 'public/getmarkethistory?' + parse.urlencode(params)
-            elif command == 3:
-                req_address += 'account/getbalances?' + parse.urlencode(konce)
-            elif command == 4:
-                side = ['buylimit', 'selllimit'][options[0] < 0]
-                konce.update({'quantity': abs(options[0]), 'rate': options[1],
-                              'market': '-'.join(options[2][::-1]), })
-                req_address += 'market/{0}?'.format(side) + parse.urlencode(konce)
+            if signing:
+                # type(req_uri) == tuple
+                req_uri[1].update({'apikey': self.Key, 'nonce': int(1E3 * time.time()), })
+                url = base_uri + req_uri[0] + parse.urlencode(req_uri[1])
+                post_data = url.encode()
+
+                sign = hmac.new(self.Secret, post_data, digestmod=hashlib.sha512).hexdigest()
+                params = {'url': url, 'data': post_data,
+                          'headers': {'apisign': sign, }, }
+                return json.loads(request.urlopen(request.Request(**params)).read().decode())
             else:
-                upd8 = [('cancel', {'uuid': options, }), ('getopenorders', {})][options is None]
-                konce.update(upd8[1])
-                req_address += 'market/{0}?'.format(upd8[0]) + parse.urlencode(konce)
+                # type(req_uri) == str
+                return json.loads(request.urlopen(base_uri + req_uri).read().decode())
 
-            return self._payload(*[(req_address,), (req_address, False)][command in range(6)[:3]])
+        except (KeyboardInterrupt, gaierror, URLError):
+            return {}
         except:
-            self.err(call)
+            self.log(traceback.format_exc(), self)
