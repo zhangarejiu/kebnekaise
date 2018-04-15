@@ -68,26 +68,39 @@ class Wrapper(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def history(self, symbol, cutoff):
+    def history(self, symbol, cutoff=None):
         """
         """
-
-        end = int(cutoff - cutoff % 60)
-        start = end - 1200
 
         try:
             params = {'market': '-'.join(symbol[::-1]), }
-            req = self._request('public/getmarkethistory?' + parse.urlencode(params), False)
-            assert req['success'] is True
 
-            if req['result'] is not None:
-                tmp = [(timegm(time.strptime(d['TimeStamp'][:19], self.fmt)),
-                        [-1, 1][d['OrderType'] == 'BUY'] * d['Quantity'],
-                        d['Price']) for d in req['result']]
-                tmp = [(epoch, amount, price,) for epoch, amount, price in tmp
-                       if start < epoch <= end]
-                tmp.reverse()
-                return tmp
+            if cutoff is not None:
+                # last 20 minutes trades history
+
+                req = self._request('public/getmarkethistory?' + parse.urlencode(params), False)
+                assert req['success'] is True
+
+                end = int(cutoff - cutoff % 60)
+                start = end - 1200
+
+                if req['result'] is not None:
+                    tmp = [(timegm(time.strptime(d['TimeStamp'][:19], self.fmt)),
+                            [-1, 1][d['OrderType'] == 'BUY'] * d['Quantity'],
+                            d['Price']) for d in req['result']]
+                    tmp = [(epoch, amount, price,) for epoch, amount, price in tmp
+                           if start < epoch <= end]
+                    tmp.reverse()
+                    return tmp
+            else:
+                # last 24 hours "OPEN|HIGH|LOW|CLOSE" prices
+
+                req = self._request('public/getmarketsummary?' + parse.urlencode(params), False)
+                assert req['success'] is True
+
+                if req['result'] is not None and len(req['result']) > 0:
+                    tmp = req['result'].pop()
+                    return tmp['PrevDay'], tmp['High'], tmp['Low'], tmp['Last']
 
         except KeyError:
             return []

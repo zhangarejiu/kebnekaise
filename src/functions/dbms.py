@@ -59,6 +59,19 @@ class Database(object):
         except:
             self.log(traceback.format_exc(), self)
 
+    def reset(self, account):
+        """
+        """
+
+        try:
+            account = dict(inspect.getmembers(account))['__class__'].__name__.upper()
+            tmp = {account: 0}
+
+            with open(self._dbfile, 'wb') as fp:
+                pickle.dump(tmp, fp, pickle.HIGHEST_PROTOCOL)
+        except:
+            self.log(traceback.format_exc(), self)
+
     def _check(self):
         """
         """

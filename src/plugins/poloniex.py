@@ -65,26 +65,43 @@ class Wrapper(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def history(self, symbol, cutoff):
+    def history(self, symbol, cutoff=None):
         """
         """
-
-        end = int(cutoff - cutoff % 60)
-        start = end - 1200
 
         try:
-            params = '_'.join(symbol[::-1]).upper(), start - 30, end + 30
-            req = self._request('public?command=returnTradeHistory&currencyPair='
-                                + '{0}&start={1}&end={2}'.format(*params), False)
-            assert req is not None
+            if cutoff is not None:
+                # last 20 minutes trades history
 
-            tmp = [(timegm(time.strptime(d['date'], '%Y-%m-%d %H:%M:%S')),
-                    [-1, 1][d['type'] == 'buy'] * float(d['amount']),
-                    float(d['rate'])) for d in req]
-            tmp = [(epoch, amount, price,) for epoch, amount, price in tmp
-                   if start < epoch <= end]
-            tmp.reverse()
-            return tmp
+                end = int(cutoff - cutoff % 60)
+                start = end - 1200
+                params = '_'.join(symbol[::-1]).upper(), start, end
+
+                req = self._request('public?command=returnTradeHistory&currencyPair='
+                                    + '{0}&start={1}&end={2}'.format(*params), False)
+                assert req is not None
+
+                tmp = [(timegm(time.strptime(d['date'], '%Y-%m-%d %H:%M:%S')),
+                        [-1, 1][d['type'] == 'buy'] * float(d['amount']),
+                        float(d['rate'])) for d in req]
+                tmp = [(epoch, amount, price,) for epoch, amount, price in tmp
+                       if start < epoch <= end]
+                tmp.reverse()
+                return tmp
+            else:
+                # last 24 hours "OPEN|HIGH|LOW|CLOSE" prices
+
+                now = int(time.time())
+                end = now - now % 60
+                start = end - 86400
+                params = '_'.join(symbol[::-1]).upper(), start, end
+
+                req = self._request('public?command=returnChartData&currencyPair='
+                                    + '{0}&start={1}&end={2}&period=7200'.format(*params), False)
+                assert req is not None
+
+                tmp = list(zip(*[(d['open'], d['high'], d['low'], d['close'],) for d in req]))
+                return tmp[0][0], max(tmp[1]), min(tmp[2]), tmp[3][-1]
 
         except KeyError:
             return []

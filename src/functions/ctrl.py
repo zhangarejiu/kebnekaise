@@ -1,4 +1,5 @@
 import inspect
+import math
 import os
 import random
 import sys
@@ -43,7 +44,7 @@ class Toolkit(object):
                 secret = self.CParser.get(plg, 'secret').encode()
                 return key, secret
         except:
-            self.log(traceback.format_exc(), self)
+            self.log(traceback.format_exc())
 
     def ticker(self, brand, symbol):
         """
@@ -65,7 +66,21 @@ class Toolkit(object):
                     bids.append(price)
             return min(asks), max(bids)
         except:
-            self.log(traceback.format_exc(), self)
+            self.log(traceback.format_exc())
+
+    def smooth(self, wild):
+        """
+        Just taming wild numbers.
+        """
+
+        try:
+            modulus = abs(wild)
+
+            if wild != 0:
+                return round(abs(math.log(modulus)) * wild / modulus, 8)
+            return 0.
+        except:
+            self.log(traceback.format_exc())
 
     def log(self, message, caller=None):
         """
@@ -100,16 +115,14 @@ class Toolkit(object):
         try:
             delay = int(60 * minutes)
             delay = [delay, 10][delay < 10]
-
             c, r = 0, random.randrange(delay - 10, delay + 10)
 
             while not (self.halt() or c == r):
                 time.sleep(1)
                 c += 1
-
             return r
         except:
-            self.log(traceback.format_exc(), self)
+            self.log(traceback.format_exc())
 
     def halt(self, send=False, remove=False):
         """
@@ -147,7 +160,7 @@ class Toolkit(object):
         except (FileExistsError, FileNotFoundError):
             pass
         except:
-            self.log(traceback.format_exc(), self)
+            self.log(traceback.format_exc())
 
     def _plugins(self):
         """
@@ -165,7 +178,7 @@ class Toolkit(object):
             return {m_obj.Wrapper(self) for m_uri, m_obj in sys.modules.items()
                     if test_uri(m_uri)}
         except:
-            self.log(traceback.format_exc(), self)
+            self.log(traceback.format_exc())
 
 
 class Auditor(object):
@@ -262,12 +275,19 @@ class Auditor(object):
         try:
             self.log('Testing [HISTORY] functionality...', self)
 
-            #params = {'symbol': self._cache['symbols'][1], 'cutoff': int(time.time())}
-            params = {'symbol': ('eth', 'btc'), 'cutoff': int(time.time())}
+            params = {'symbol': self._cache['symbols'][1], 'cutoff': int(time.time())}
             self.log('Using the following parameters: ' + str(params), self)
 
             history = self.Wrapper.history(**params)
             self.log('The response was: ' + str(history), self)
+
+            self.log('Now, testing [OHLC] functionality...', self)
+
+            del params['cutoff']
+            self.log('Using the following parameters: ' + str(params), self)
+
+            ohlc = self.Wrapper.history(**params)
+            self.log('The response was: ' + str(ohlc), self)
         except:
             self.log(traceback.format_exc(), self)
             self._cache['errors'] += 1

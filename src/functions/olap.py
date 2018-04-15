@@ -1,4 +1,5 @@
-import inspect
+# todo
+
 import time
 import traceback
 
@@ -16,7 +17,7 @@ class Indicator(object):
         self.Database = database
         self.Wrapper = self.Database.Wrapper
         self.Brand = self.Wrapper.Brand
-        self.Account = dict(inspect.getmembers(self))['__class__'].__name__.upper()
+        self._cache = {s: {} for s in self.Wrapper.symbols() if s[1] == 'btc'}
 
         self.Toolkit = self.Wrapper.Toolkit
         self.log = self.Toolkit.log
@@ -29,65 +30,62 @@ class Indicator(object):
 
         try:
             self._update()
+
             self.log('', self)
+            self.log('Calculating financial indexes for {0} symbols...'
+                     .format(len(self._cache)), self)
+            t_delta = time.time()
 
-            bw = {}
-            for s, (bb, h) in self.Database.load(self.Account).items():
+            bw = {s: self._index2(s) for s in self._cache if not self.Toolkit.halt()}
+            bw = {k: v for k, v in bw.items() if v is not None}
 
-                b = {}
-                if len(bb) > 0:
-                    b = bb[max(bb)]
-
-                m, t = self._momentum(b), self._trend(h)
-                if None not in [m, t]:
-                    if m > 100 and t < 0:
-                        bw[s] = round(m * abs(t), 5)
-
-            self.log('Trade indexes are: ' + str(bw), self)
+            self.log('', self)
+            self.log('Financial indexes are: ' + str(bw), self)
 
             bw = dict(sorted(bw.items(), key=lambda k: k[1])[-5:])
+
+            self.log('', self)
             self.log('Current selection is: ' + str(bw), self)
 
+            t_delta = time.time() - t_delta
+            av_delta = t_delta / len(self._cache)
+            stats = round(t_delta, 3), round(av_delta, 5)
+
+            self.log('', self)
+            self.log('...calculation done in {0} s, average {1} s/symbol.'.format(*stats), self)
             return bw
         except:
             self.log(traceback.format_exc(), self)
 
-    def _update(self, hours=8):
+    def _update(self):
         """
         Downloads the book of orders and trades history info.
         """
 
         try:
-            symbols = {s for s in self.Wrapper.symbols() if s[1] == 'btc'}
-
             self.log('', self)
             self.log('Downloading orders BOOK & trades HISTORY information for {0} symbols...'
-                     .format(len(symbols)), self)
+                     .format(len(self._cache)), self)
             t_delta = time.time()
 
-            tmp = self.Database.load(self.Account)
+            tmp = self.Database.load(self)
             if tmp == 0:
-                tmp = {s: [{}, []] for s in symbols}
+                for s in self._cache:
+                    if not self.Toolkit.halt():
+                        self._cache[s]['book'] = self.Wrapper.book(s, 3)
 
-            b, h = {}, []
-            for s in symbols:
-                if not self.Toolkit.halt():
-                    b = self.Wrapper.book(s, 1)
+                    if not self.Toolkit.halt():
+                        self._cache[s]['history'] = self.Wrapper.history(s, t_delta)
 
-                if not self.Toolkit.halt():
-                    h = self.Wrapper.history(s, t_delta)
-
-                if None not in [b, h]:
-                    if len(b) * len(h) > 0:
-                        tmp[s][0].update({t_delta: b})
-                        tmp[s][1] += [t for t in h if t not in tmp[s][1]]
-                        tmp[s][1] = [t for t in tmp[s][1] if t_delta - t[0] < hours * 3600]
-                    else:
-                        tmp[s] = [{}, []]
-            self.Database.save(self.Account, tmp)
+                    if not self.Toolkit.halt():
+                        self._cache[s]['ohlc'] = self.Wrapper.history(s)
+                self.Database.save(self, self._cache)
+            else:
+                self._cache = tmp
+            self.Database.reset(self)
 
             t_delta = time.time() - t_delta
-            av_delta = t_delta / len(symbols)
+            av_delta = t_delta / len(self._cache)
             stats = round(t_delta, 3), round(av_delta, 5)
 
             self.log('', self)
@@ -96,7 +94,45 @@ class Indicator(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def _momentum(self, book):
+    def _index(self, symbol):
+        """
+        """
+
+        try:
+            if self.Toolkit.halt():
+                return
+
+            v = self._vclock(symbol)
+            s = self._stillness(symbol)
+            m = self._momentum(symbol)
+
+            if None not in [m, s, v]:
+                p_open, p_high, p_low, p_close = v[0], max(v), min(v), v[-1]
+                x = 100 * (p_close / p_high - 1)  # always <= 0
+                y = 100 * (p_close / p_low - 1)  # always >= 0
+                z = 100 * (p_close / p_open - 1)  # any
+
+                return self.Toolkit.smooth(s + m * (x + y + z) / 3)
+        except:
+            self.log(traceback.format_exc(), self)
+
+    def _index2(self, symbol):
+        """
+        """
+
+        try:
+            if self.Toolkit.halt():
+                return
+
+            m = self._momentum(symbol)
+            s = self._stillness(symbol)
+
+            if None not in [m, s] and m > 0:
+                return self.Toolkit.smooth(s)
+        except:
+            self.log(traceback.format_exc(), self)
+
+    def _momentum(self, symbol):
         """
         How many % does the volume in BIDS exceed the volume in ASKS?
 
@@ -110,41 +146,37 @@ class Indicator(object):
                 return
 
             asks, bids = 0, 0
-            for v in book.values():
-                if v > 0:
-                    asks += v
+            for p, a in self._cache[symbol]['book'].items():
+                if a > 0:
+                    asks += p * a
                 else:
-                    bids += v
+                    bids += p * a
 
-            if abs(asks * bids) > 0:
+            if asks > 0:
                 return 100 * (abs(bids / asks) - 1)
         except:
             self.log(traceback.format_exc(), self)
 
-    def _trend(self, history):
+    def _stillness(self, symbol):
         """
-        https://www.investopedia.com/terms/o/ohlcchart.asp
+        Intuitively, symbols with less activity are more likely to
+        get abrupt price changes (pumps).
         """
 
         try:
             if self.Toolkit.halt():
                 return
 
-            h = self._vclock(history)
-            if h is not None:
-                p_open, p_high, p_low, p_close = h[0], max(h), min(h), h[-1]
+            p_open, p_high, p_low, p_close = self._cache[symbol]['ohlc']
+            trend = 100 * (p_close / p_open - 1)
+            extent = 100 * (p_high / p_low - 1)
 
-                f = 100 * (p_high / p_open - 1)
-                g = 100 * (p_close / p_low - 1)
-                h = 100 * (p_close / p_open - 1)
-
-                t = (f + g + h) / 3
-                if abs(t) > 0:
-                    return t
+            if trend > 0:
+                return 1 / extent
         except:
             self.log(traceback.format_exc(), self)
 
-    def _vclock(self, history, quantile=1.):
+    def _vclock(self, symbol, quantile=.1, cardinality=10):
         """
         https://www.amazon.com/dp/178272009X
 
@@ -155,25 +187,30 @@ class Indicator(object):
             if self.Toolkit.halt():
                 return
 
-            tmp1, tmp2, tmp3 = history.copy(), [0, 0], []
-            tmp1.reverse()
+            tmp1 = self._cache[symbol]['history'].copy()
+            tmp2, tmp3 = [0, 0], []
 
+            self.log('', self)
+            self.log('symbol, tmp1 = ' + str((symbol, tmp1,)), self)
+
+            tmp1.reverse()
             for _, a, p in tmp1:
                 v1, p1 = tmp2
                 v2, p2 = abs(a * p), p
-
                 v = v1 + v2
                 p = (v1 * p1 + v2 * p2) / v
 
                 if v > quantile:
                     P, q, r = round(p, 8), int(v / quantile), v % quantile
-
                     tmp3 += [P for _ in range(q)]
                     tmp2 = [r, p]
                 else:
                     tmp2 = [v, p]
+            tmp3.append(round(tmp2[1], 8))
 
-            cardinality = int(20 * quantile)
+            self.log('', self)
+            self.log('symbol, tmp3 = ' + str((symbol, tmp3,)), self)
+
             if len(tmp3) > cardinality:
                 tmp3.reverse()
                 return tmp3[-cardinality:]
