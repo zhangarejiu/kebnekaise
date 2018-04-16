@@ -132,6 +132,8 @@ class Wrapper(object):
         """
         """
 
+        req = {}
+
         try:
             tmp = {'rate': round(price, 8),
                    'market': '-'.join(symbol[::-1]), }
@@ -149,6 +151,9 @@ class Wrapper(object):
             return req['result']['uuid']
         except:
             self.log(traceback.format_exc(), self)
+
+            self.log('', self)
+            self.log('Response: ' + str(req), self)
 
     def orders(self, order_id=None):
         """
