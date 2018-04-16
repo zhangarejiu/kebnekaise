@@ -250,7 +250,7 @@ class Trader(object):
             else:
                 self.log('STARTING TRADE PROCEDURES FOR SYMBOL: ' + str(chosen), self)
 
-                buying = self._burn(chosen, self.Wrapper.Fee / 2)
+                buying = self._burn(chosen, self.Wrapper.Fee / 3)
                 if buying is None: return
 
                 self.Toolkit.wait(5)
