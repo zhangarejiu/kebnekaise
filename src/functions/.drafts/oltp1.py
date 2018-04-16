@@ -1,3 +1,5 @@
+# todo
+
 import time
 import traceback
 
@@ -15,8 +17,7 @@ class Trader(object):
         self.Indicator = indicator
         self.Wrapper = self.Indicator.Wrapper
         self.Brand = self.Wrapper.Brand
-        self._first, self._last = 0, 0
-        self._symbols = set()
+        self._last, self._symbols = 0, set()
 
         self.Toolkit = self.Wrapper.Toolkit
         self.log = self.Toolkit.log
@@ -33,27 +34,9 @@ class Trader(object):
                 self.log('[ BEGIN: TRADE ]', self)
                 t_delta = time.time()
 
-                self._symbols = self.Wrapper.symbols()
-                assert self._symbols is not None
-
-                report = self._report(self._review(self._clear()))
-                assert report is not None
-
                 broadway = self.Indicator.broadway()
                 assert broadway is not None
 
-                balance, holdings = report
-                if holdings[0] > self.Toolkit.Quota:
-                    if len(broadway) > 0:
-                        self._chase(balance, broadway)
-                    else:
-                        self.log('', self)
-                        self.log('No good symbols enough, waiting for better market '
-                                 + 'conditions...', self)
-                else:
-                    self.log('', self)
-                    self.log('Internal error or insufficient funds, sorry...', self)
-                    self.Toolkit.wait(20)
                 t_delta = round(time.time() - t_delta, 3)
 
                 self.log('', self)
@@ -64,7 +47,6 @@ class Trader(object):
                 self.Toolkit.wait([1, delay][delay > 1])
         except:
             self.log(traceback.format_exc(), self)
-            self.probe()
 
     def _clear(self):
         """
@@ -225,18 +207,8 @@ class Trader(object):
         try:
             self.log('', self)
             self.log('The selection received was: ' + str(broadway), self)
-
             chosen = sorted(broadway.items(), key=lambda k: k[1])[-1][0]
             self.log('The chosen symbol was: ' + str(chosen), self)
-
-            if self._first in [0, chosen]:
-                self.log('', self)
-                self.log('But it is the first one of this session: nothing to do.', self)
-
-                if self._first == 0:
-                    self._first = chosen
-                return
-            self._first = None
 
             self.log('', self)
             if chosen in {s for a, p, s in self.Wrapper.orders().values()

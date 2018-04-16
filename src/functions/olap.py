@@ -1,5 +1,3 @@
-# todo
-
 import time
 import traceback
 
@@ -17,7 +15,7 @@ class Indicator(object):
         self.Database = database
         self.Wrapper = self.Database.Wrapper
         self.Brand = self.Wrapper.Brand
-        self._cache = {s: {} for s in self.Wrapper.symbols() if s[1] == 'btc'}
+        self._cache = {}
 
         self.Toolkit = self.Wrapper.Toolkit
         self.log = self.Toolkit.log
@@ -29,6 +27,7 @@ class Indicator(object):
         """
 
         try:
+            self.Database.reset(self)  # disable this in order to just make tests
             self._update()
 
             self.log('', self)
@@ -36,12 +35,11 @@ class Indicator(object):
                      .format(len(self._cache)), self)
             t_delta = time.time()
 
-            bw = {s: self._index2(s) for s in self._cache if not self.Toolkit.halt()}
+            bw = {s: self._index(s) for s in self._cache if not self.Toolkit.halt()}
             bw = {k: v for k, v in bw.items() if v is not None}
 
-            self.log('', self)
-            self.log('Financial indexes are: ' + str(bw), self)
-
+            #self.log('', self)
+            #self.log('Financial indexes are: ' + str(bw), self)
             bw = dict(sorted(bw.items(), key=lambda k: k[1])[-5:])
 
             self.log('', self)
@@ -63,6 +61,8 @@ class Indicator(object):
         """
 
         try:
+            self._cache = {s: {} for s in self.Wrapper.symbols()}
+
             self.log('', self)
             self.log('Downloading orders BOOK & trades HISTORY information for {0} symbols...'
                      .format(len(self._cache)), self)
@@ -72,17 +72,20 @@ class Indicator(object):
             if tmp == 0:
                 for s in self._cache:
                     if not self.Toolkit.halt():
-                        self._cache[s]['book'] = self.Wrapper.book(s, 3)
+                        self._cache[s]['book'] = self.Wrapper.book(s, 1)
 
                     if not self.Toolkit.halt():
                         self._cache[s]['history'] = self.Wrapper.history(s, t_delta)
 
                     if not self.Toolkit.halt():
                         self._cache[s]['ohlc'] = self.Wrapper.history(s)
+
+                    if None in self._cache[s].values():
+                        self._cache.pop(s)
+
                 self.Database.save(self, self._cache)
             else:
                 self._cache = tmp
-            self.Database.reset(self)
 
             t_delta = time.time() - t_delta
             av_delta = t_delta / len(self._cache)
@@ -90,7 +93,6 @@ class Indicator(object):
 
             self.log('', self)
             self.log('...download done in {0} s, average {1} s/symbol.'.format(*stats), self)
-            return stats
         except:
             self.log(traceback.format_exc(), self)
 
@@ -102,37 +104,26 @@ class Indicator(object):
             if self.Toolkit.halt():
                 return
 
+            p = self._potential(symbol)
             v = self._vclock(symbol)
             s = self._stillness(symbol)
-            m = self._momentum(symbol)
 
-            if None not in [m, s, v]:
+            if None not in [p, v, s]:
                 p_open, p_high, p_low, p_close = v[0], max(v), min(v), v[-1]
+
+                if p_close < 1E-5:  # getting rid of DOGE...
+                    return
+
                 x = 100 * (p_close / p_high - 1)  # always <= 0
                 y = 100 * (p_close / p_low - 1)  # always >= 0
                 z = 100 * (p_close / p_open - 1)  # any
 
-                return self.Toolkit.smooth(s + m * (x + y + z) / 3)
+                if p > 0 < (x + y + z) / 3:
+                    return round(s, 8)
         except:
             self.log(traceback.format_exc(), self)
 
-    def _index2(self, symbol):
-        """
-        """
-
-        try:
-            if self.Toolkit.halt():
-                return
-
-            m = self._momentum(symbol)
-            s = self._stillness(symbol)
-
-            if None not in [m, s] and m > 0:
-                return self.Toolkit.smooth(s)
-        except:
-            self.log(traceback.format_exc(), self)
-
-    def _momentum(self, symbol):
+    def _potential(self, symbol):
         """
         How many % does the volume in BIDS exceed the volume in ASKS?
 
@@ -146,37 +137,18 @@ class Indicator(object):
                 return
 
             asks, bids = 0, 0
-            for p, a in self._cache[symbol]['book'].items():
-                if a > 0:
-                    asks += p * a
+            for amount in self._cache[symbol]['book'].values():
+                if amount > 0:
+                    asks += amount
                 else:
-                    bids += p * a
+                    bids += amount
 
-            if asks > 0:
+            if not asks == 0:
                 return 100 * (abs(bids / asks) - 1)
         except:
             self.log(traceback.format_exc(), self)
 
-    def _stillness(self, symbol):
-        """
-        Intuitively, symbols with less activity are more likely to
-        get abrupt price changes (pumps).
-        """
-
-        try:
-            if self.Toolkit.halt():
-                return
-
-            p_open, p_high, p_low, p_close = self._cache[symbol]['ohlc']
-            trend = 100 * (p_close / p_open - 1)
-            extent = 100 * (p_high / p_low - 1)
-
-            if trend > 0:
-                return 1 / extent
-        except:
-            self.log(traceback.format_exc(), self)
-
-    def _vclock(self, symbol, quantile=.1, cardinality=10):
+    def _vclock(self, symbol, quantile=.1):
         """
         https://www.amazon.com/dp/178272009X
 
@@ -189,9 +161,6 @@ class Indicator(object):
 
             tmp1 = self._cache[symbol]['history'].copy()
             tmp2, tmp3 = [0, 0], []
-
-            self.log('', self)
-            self.log('symbol, tmp1 = ' + str((symbol, tmp1,)), self)
 
             tmp1.reverse()
             for _, a, p in tmp1:
@@ -206,13 +175,26 @@ class Indicator(object):
                     tmp2 = [r, p]
                 else:
                     tmp2 = [v, p]
-            tmp3.append(round(tmp2[1], 8))
+            tmp3.reverse()
 
-            self.log('', self)
-            self.log('symbol, tmp3 = ' + str((symbol, tmp3,)), self)
+            if len(tmp3) > 20:
+                return tmp3
+        except:
+            self.log(traceback.format_exc(), self)
 
-            if len(tmp3) > cardinality:
-                tmp3.reverse()
-                return tmp3[-cardinality:]
+    def _stillness(self, symbol):
+        """
+        Empirically, symbols with less volatility are more likely to
+        get abrupt price changes (pumps).
+        """
+
+        try:
+            if self.Toolkit.halt():
+                return
+
+            p_open, p_high, p_low, p_close = self._cache[symbol]['ohlc']
+            volatility = 100 * (p_high / p_low - 1)
+
+            return 1 / volatility
         except:
             self.log(traceback.format_exc(), self)

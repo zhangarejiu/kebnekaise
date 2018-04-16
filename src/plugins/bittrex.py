@@ -29,17 +29,20 @@ class Wrapper(object):
         self.Key, self.Secret = self.Toolkit.setup(self.Brand)
         self.log = self.Toolkit.log
 
-    def symbols(self):
+    def symbols(self, btc_only=True):
         """
         """
 
         try:
-            req = self._request('public/getmarketsummaries', False)
+            req = self._request('public/getmarkets', False)
             assert req['success'] is True
 
-            now = time.time()
-            return {d['MarketName'].lower().partition('-')[::-2] for d in req['result']
-                    if now - timegm(time.strptime(d['TimeStamp'][:19], self.fmt)) < 3600}
+            tmp = {d['MarketName'].lower().partition('-')[::-2]
+                   for d in req['result'] if d['IsActive']}
+
+            if btc_only:
+                return {s for s in tmp if s[1] == 'btc'}
+            return tmp
         except:
             self.log(traceback.format_exc(), self)
 

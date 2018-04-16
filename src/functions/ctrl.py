@@ -54,7 +54,7 @@ class Toolkit(object):
         try:
             wrapper = {plg for plg in self.Plugins if plg.Brand == brand}.pop()
 
-            book = wrapper.book(symbol, 1)
+            book = wrapper.book(symbol)
             if book is None:
                 return 0., 0.
 
@@ -232,7 +232,7 @@ class Auditor(object):
         try:
             self.log('Testing [SYMBOLS] functionality...', self)
 
-            S = {s for s in self.Wrapper.symbols() if s[1] == 'btc'}
+            S = self.Wrapper.symbols()
             ls = len(S)
 
             if ls > 0:

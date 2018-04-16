@@ -28,7 +28,7 @@ class Wrapper(object):
         self.Key, self.Secret = self.Toolkit.setup(self.Brand)
         self.log = self.Toolkit.log
 
-    def symbols(self):
+    def symbols(self, btc_only=True):
         """
         """
 
@@ -36,8 +36,12 @@ class Wrapper(object):
             req = self._request('public?command=returnTicker', False)
             assert req is not None
 
-            return {key.lower().partition('_')[::-2] for key in req
-                    if int(req[key]['isFrozen']) == 0}
+            tmp = {key.lower().partition('_')[::-2]
+                   for key in req if int(req[key]['isFrozen']) == 0}
+
+            if btc_only:
+                return {s for s in tmp if s[1] == 'btc'}
+            return tmp
         except:
             self.log(traceback.format_exc(), self)
 
