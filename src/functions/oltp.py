@@ -231,7 +231,7 @@ class Trader(object):
 
             if self._first in [0, chosen]:
                 self.log('', self)
-                self.log('But it is the first one of this session: nothing to do.', self)
+                self.log('But it\'s the first one of this session: nothing to do.', self)
 
                 if self._first == 0:
                     self._first = chosen
