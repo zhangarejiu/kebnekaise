@@ -53,7 +53,7 @@ class Trader(object):
                 else:
                     self.log('', self)
                     self.log('Internal error or insufficient funds, sorry...', self)
-                    self.Toolkit.wait(20)
+                    #self.Toolkit.wait(20)
                 t_delta = round(time.time() - t_delta, 3)
 
                 self.log('', self)
