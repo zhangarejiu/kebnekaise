@@ -95,7 +95,7 @@ class Trader(object):
                     if eligible and currency not in engaged:
                         ticker = self.Toolkit.ticker(self.Brand, symbol)
                         assert ticker is not None
-                        self._burn(symbol, -100 * self.Wrapper.Fee, ticker[0])
+                        self._burn(symbol, -10 / 3 * self.Wrapper.Fee, ticker[0])
 
             t_delta = round(time.time() - t_delta, 3)
             self.log('', self)
@@ -128,7 +128,7 @@ class Trader(object):
                         self.log('', self)
                         self.log('Canceling order [{0}]...'.format(oid), self)
                         assert self.Wrapper.orders(oid) is not None
-                        self._burn(symbol, -1 * self.Wrapper.Fee, price)
+                        self._burn(symbol, -1 / 3 * self.Wrapper.Fee, price)
                 self._last = t_delta
 
             t_delta = round(time.time() - t_delta, 3)
@@ -256,7 +256,7 @@ class Trader(object):
                 self.Toolkit.wait(5)
                 if buying[1] in self.Wrapper.orders():
                     self.Wrapper.orders(buying[1])
-                selling = self._burn(chosen, -5 * self.Wrapper.Fee, buying[0]['price'])
+                selling = self._burn(chosen, -3 * self.Wrapper.Fee, buying[0]['price'])
 
                 self.log('', self)
                 if selling is None:
