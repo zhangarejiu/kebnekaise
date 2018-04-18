@@ -7,15 +7,16 @@ class Indicator(object):
     https://en.wikipedia.org/wiki/Online_analytical_processing
     """
 
-    def __init__(self, database):
+    def __init__(self, wrapper):
         """
         Constructor method.
         """
 
-        self.Database = database
-        self.Wrapper = self.Database.Wrapper
+        self.Wrapper = wrapper
         self.Brand = self.Wrapper.Brand
+
         self._cache = {}
+        self._upd8ed, self._calcul8ed = 0, None
 
         self.Toolkit = self.Wrapper.Toolkit
         self.log = self.Toolkit.log
@@ -27,7 +28,6 @@ class Indicator(object):
         """
 
         try:
-            self.Database.reset(self)  # disable this in order to just make tests
             self._update()
 
             self.log('', self)
@@ -36,10 +36,16 @@ class Indicator(object):
             t_delta = time.time()
 
             bw = {s: self._index(s) for s in self._cache if not self.Toolkit.halt()}
-            bw = {k: v for k, v in bw.items() if v is not None and v > 0}
+            bw = {k: v for k, v in bw.items() if v is not None}
 
-            #self.log('', self)
-            #self.log('Financial indexes are: ' + str(bw), self)
+            if not self._calcul8ed:
+                self._cache = {s: {} for s in bw}
+                self._calcul8ed = True
+
+            self.log('', self)
+            self.log('Financial indexes are: ' + str(bw), self)
+
+            bw = {k: v for k, v in bw.items() if v > 0}
             bw = dict(sorted(bw.items(), key=lambda k: k[1])[-5:])
 
             self.log('', self)
@@ -61,31 +67,32 @@ class Indicator(object):
         """
 
         try:
-            self._cache = {s: {} for s in self.Wrapper.symbols()}
+            t_delta = time.time()
+            if (t_delta - self._upd8ed) / 60 > 6 * self.Toolkit.Orbit:
+                self._cache = {s: {} for s in self.Wrapper.symbols()}
+                self._upd8ed = t_delta
+                self._calcul8ed = False
 
             self.log('', self)
-            self.log('Downloading orders BOOK & trades HISTORY information for {0} symbols...'
-                     .format(len(self._cache)), self)
-            t_delta = time.time()
+            self.log('Updating BOOK/HISTORY/OHLC info about symbols: ' +
+                     str(set(self._cache)), self)
 
-            tmp = self.Database.load(self)
-            if tmp == 0:
-                for s in self._cache:
-                    if not self.Toolkit.halt():
-                        self._cache[s]['book'] = self.Wrapper.book(s, 1)
+            self.log('', self)
+            self.log('({0} total)'.format(len(self._cache)), self)
 
-                    if not self.Toolkit.halt():
-                        self._cache[s]['history'] = self.Wrapper.history(s, t_delta)
+            for s in self._cache:
+                if not self.Toolkit.halt():
+                    self._cache[s]['book'] = self.Wrapper.book(s, 1)
 
-                    if not self.Toolkit.halt():
-                        self._cache[s]['ohlc'] = self.Wrapper.history(s)
+                if not self.Toolkit.halt():
+                    self._cache[s]['history'] = self.Wrapper.history(s, t_delta)
 
-                    if None in self._cache[s].values():
-                        self._cache[s] = {}
+                if not self.Toolkit.halt():
+                    self._cache[s]['ohlc'] = self.Wrapper.history(s)
 
-                self.Database.save(self, {k: v for k, v in self._cache.items() if len(v) > 0})
-            else:
-                self._cache = tmp
+                if None in self._cache[s].values():
+                    self._cache[s] = {}
+            self._cache = {k: v for k, v in self._cache.items() if len(v) > 0}
 
             t_delta = time.time() - t_delta
             av_delta = t_delta / len(self._cache)

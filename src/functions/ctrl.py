@@ -23,7 +23,8 @@ class Toolkit(object):
         self.CParser = ConfigParser(allow_no_value=True)
         self.CParser.read(self.Path + '/bin/conf.ini')
         self.Plugins = self._plugins()
-        self.Quota = 1E-3
+        self.Orbit = 5  # minutes
+        self.Quota = 1E-3  # bitcoins
 
         self.Phi = (1 + 5 ** .5) / 2  # https://en.wikipedia.org/wiki/Golden_ratio
         self.Greeting = 'This component was successfully started.'
@@ -186,12 +187,12 @@ class Auditor(object):
     Health test for enabled plugins.
     """
 
-    def __init__(self, wrapper):
+    def __init__(self, trader):
         """
         Constructor method.
         """
 
-        self.Wrapper = wrapper
+        self.Wrapper = trader.Wrapper
         self.Brand = self.Wrapper.Brand
         self._cache = {'errors': 0, 'symbols': [], 'balance': {}, 'orders': [], }
 

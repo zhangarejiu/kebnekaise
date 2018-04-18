@@ -1,3 +1,4 @@
+import random
 import time
 import traceback
 
@@ -15,7 +16,7 @@ class Trader(object):
         self.Indicator = indicator
         self.Wrapper = self.Indicator.Wrapper
         self.Brand = self.Wrapper.Brand
-        self._first, self._last, self._unity = 0, 0, 1
+        self._first, self._last, self._unity = 0, 0, .1
         self._symbols = set()
 
         self.Toolkit = self.Wrapper.Toolkit
@@ -53,14 +54,14 @@ class Trader(object):
                 else:
                     self.log('', self)
                     self.log('Internal error or insufficient funds, sorry...', self)
-                    #self.Toolkit.wait(20)
+                    self.Toolkit.wait(3 * self.Toolkit.Orbit)
                 t_delta = round(time.time() - t_delta, 3)
 
                 self.log('', self)
                 self.log('...probing done in {0} seconds.'.format(t_delta), self)
                 self.log('[ END: TRADE ]', self)
 
-                delay = 5 - t_delta / 60
+                delay = self.Toolkit.Orbit - t_delta / 60
                 self.Toolkit.wait([1, delay][delay > 1])
         except:
             self.log(traceback.format_exc(), self)
@@ -95,7 +96,7 @@ class Trader(object):
                     if eligible and currency not in engaged:
                         ticker = self.Toolkit.ticker(self.Brand, symbol)
                         assert ticker is not None
-                        self._burn(symbol, -10 * self._unity, ticker[0])
+                        self._burn(symbol, -100 * self._unity, ticker[0])
 
             t_delta = round(time.time() - t_delta, 3)
             self.log('', self)
@@ -128,7 +129,7 @@ class Trader(object):
                         self.log('', self)
                         self.log('Canceling order [{0}]...'.format(oid), self)
                         assert self.Wrapper.orders(oid) is not None
-                        self._burn(symbol, -1 * self._unity / 10, price)
+                        self._burn(symbol, -1 * self._unity, price)
                 self._last = t_delta
 
             t_delta = round(time.time() - t_delta, 3)
@@ -217,7 +218,7 @@ class Trader(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def _chase(self, balance, broadway):
+    def _chase(self, balance, broadway, rchoice=True):
         """
         Ensures that the given symbol is bought & sold by the best market conditions.
         """
@@ -226,8 +227,12 @@ class Trader(object):
             self.log('', self)
             self.log('The selection received was: ' + str(broadway), self)
 
-            chosen = sorted(broadway.items(), key=lambda k: k[1])[-1][0]
-            self.log('The chosen symbol was: ' + str(chosen), self)
+            if not rchoice:
+                chosen = sorted(broadway.items(), key=lambda k: k[1])[-1][0]
+                self.log('The chosen symbol was: ' + str(chosen), self)
+            else:
+                chosen = random.choice(list(broadway))
+                self.log('The (randomly) chosen symbol was: ' + str(chosen), self)
 
             if self._first in [0, chosen]:
                 self.log('', self)
@@ -250,13 +255,13 @@ class Trader(object):
             else:
                 self.log('STARTING TRADE PROCEDURES FOR SYMBOL: ' + str(chosen), self)
 
-                buying = self._burn(chosen, self._unity / 12)
+                buying = self._burn(chosen, self._unity)
                 if buying is None: return
 
-                self.Toolkit.wait(5)
+                self.Toolkit.wait(self.Toolkit.Orbit)
                 if buying[1] in self.Wrapper.orders():
                     self.Wrapper.orders(buying[1])
-                selling = self._burn(chosen, -1 * self._unity, buying[0]['price'])
+                selling = self._burn(chosen, -10 * self._unity, buying[0]['price'])
 
                 self.log('', self)
                 if selling is None:
