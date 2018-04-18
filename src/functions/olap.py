@@ -36,7 +36,7 @@ class Indicator(object):
             t_delta = time.time()
 
             bw = {s: self._index(s) for s in self._cache if not self.Toolkit.halt()}
-            bw = {k: v for k, v in bw.items() if v is not None}
+            bw = {k: v for k, v in bw.items() if v is not None and v > 0}
 
             #self.log('', self)
             #self.log('Financial indexes are: ' + str(bw), self)
@@ -81,9 +81,9 @@ class Indicator(object):
                         self._cache[s]['ohlc'] = self.Wrapper.history(s)
 
                     if None in self._cache[s].values():
-                        self._cache.pop(s)
+                        self._cache[s] = {}
 
-                self.Database.save(self, self._cache)
+                self.Database.save(self, {k: v for k, v in self._cache.items() if len(v) > 0})
             else:
                 self._cache = tmp
 
@@ -104,26 +104,16 @@ class Indicator(object):
             if self.Toolkit.halt():
                 return
 
-            p = self._potential(symbol)
-            v = self._vclock(symbol)
-            s = self._stillness(symbol)
+            v = self._volatility(symbol)  # last 24 hours
+            t = self._trend(symbol)  # last 20 minutes
+            m = self._momentum(symbol)  # right now
 
-            if None not in [p, v, s]:
-                p_open, p_high, p_low, p_close = v[0], max(v), min(v), v[-1]
-
-                if p_close < 1E-5:  # getting rid of DOGE...
-                    return
-
-                x = 100 * (p_close / p_high - 1)  # always <= 0
-                y = 100 * (p_close / p_low - 1)  # always >= 0
-                z = 100 * (p_close / p_open - 1)  # any
-
-                if p > 0 < (x + y + z) / 3:
-                    return round(s, 8)
+            if None not in [m, t, v]:
+                return self.Toolkit.smooth(m * -t * v)
         except:
             self.log(traceback.format_exc(), self)
 
-    def _potential(self, symbol):
+    def _momentum(self, symbol):
         """
         How many % does the volume in BIDS exceed the volume in ASKS?
 
@@ -143,12 +133,13 @@ class Indicator(object):
                 else:
                     bids += amount
 
-            if not asks == 0:
-                return 100 * (abs(bids / asks) - 1)
+            if asks != 0:
+                m = 100 * (abs(bids / asks) - 1)
+                return [None, m][m > 0]
         except:
             self.log(traceback.format_exc(), self)
 
-    def _vclock(self, symbol, quantile=.1):
+    def _trend(self, symbol, quantile=.1):
         """
         https://www.amazon.com/dp/178272009X
 
@@ -178,14 +169,20 @@ class Indicator(object):
             tmp3.reverse()
 
             if len(tmp3) > 20:
-                return tmp3
+                p_open, p_high, p_low, p_close = tmp3[0], max(tmp3), min(tmp3), tmp3[-1]
+                if p_close < 1E-5:  # getting rid of DOGE etc.
+                    return
+
+                x = 100 * (p_close / p_high - 1)  # always <= 0
+                y = 100 * (p_close / p_low - 1)  # always >= 0
+                z = 100 * (p_close / p_open - 1)  # any
+                return (x + y + z) / 3
         except:
             self.log(traceback.format_exc(), self)
 
-    def _stillness(self, symbol):
+    def _volatility(self, symbol):
         """
-        Empirically, symbols with less volatility are more likely to
-        get abrupt price changes (pumps).
+        https://www.investopedia.com/terms/v/volatility.asp
         """
 
         try:
@@ -193,8 +190,9 @@ class Indicator(object):
                 return
 
             p_open, p_high, p_low, p_close = self._cache[symbol]['ohlc']
-            volatility = 100 * (p_high / p_low - 1)
+            tendency = 100 * (p_close / p_open - 1)
 
-            return 1 / volatility
+            if tendency > 0:
+                return 100 * (p_high / p_low - 1)
         except:
             self.log(traceback.format_exc(), self)

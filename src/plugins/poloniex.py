@@ -209,7 +209,8 @@ class Wrapper(object):
                 # type(req_uri) == str
                 return json.loads(request.urlopen(base_uri + req_uri).read().decode())
 
-        except (KeyboardInterrupt, gaierror, URLError):
-            return {}
+        except (ConnectionResetError, KeyboardInterrupt, gaierror, URLError):
+            return
         except:
             self.log(traceback.format_exc(), self)
+            return
