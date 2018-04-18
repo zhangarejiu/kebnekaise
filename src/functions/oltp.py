@@ -15,7 +15,7 @@ class Trader(object):
         self.Indicator = indicator
         self.Wrapper = self.Indicator.Wrapper
         self.Brand = self.Wrapper.Brand
-        self._first, self._last = 0, 0
+        self._first, self._last, self._unity = 0, 0, 1
         self._symbols = set()
 
         self.Toolkit = self.Wrapper.Toolkit
@@ -95,7 +95,7 @@ class Trader(object):
                     if eligible and currency not in engaged:
                         ticker = self.Toolkit.ticker(self.Brand, symbol)
                         assert ticker is not None
-                        self._burn(symbol, -10 / 3 * self.Wrapper.Fee, ticker[0])
+                        self._burn(symbol, -10 * self._unity, ticker[0])
 
             t_delta = round(time.time() - t_delta, 3)
             self.log('', self)
@@ -128,7 +128,7 @@ class Trader(object):
                         self.log('', self)
                         self.log('Canceling order [{0}]...'.format(oid), self)
                         assert self.Wrapper.orders(oid) is not None
-                        self._burn(symbol, -1 / 3 * self.Wrapper.Fee, price)
+                        self._burn(symbol, -1 * self._unity / 10, price)
                 self._last = t_delta
 
             t_delta = round(time.time() - t_delta, 3)
@@ -250,13 +250,13 @@ class Trader(object):
             else:
                 self.log('STARTING TRADE PROCEDURES FOR SYMBOL: ' + str(chosen), self)
 
-                buying = self._burn(chosen, self.Wrapper.Fee / 3)
+                buying = self._burn(chosen, self._unity / 12)
                 if buying is None: return
 
                 self.Toolkit.wait(5)
                 if buying[1] in self.Wrapper.orders():
                     self.Wrapper.orders(buying[1])
-                selling = self._burn(chosen, -3 * self.Wrapper.Fee, buying[0]['price'])
+                selling = self._burn(chosen, -1 * self._unity, buying[0]['price'])
 
                 self.log('', self)
                 if selling is None:
@@ -277,13 +277,12 @@ class Trader(object):
 
         Price will be calculated according to the lowest ask for BUY or
         the "referential" attribute for SELL. All of your available
-        balance will be used, for simplicity.
+        balance will be used in SELLS, or 'self.Toolkit.Quota' in BUYS.
         """
 
         try:
-            fee = 1 - self.Wrapper.Fee / 100
             coef = [1 + margin / 100, 1 - margin / 100][maker]
-            base, quote = symbol
+            base, quote = symbol[0], 'btc'
 
             balance = self.Wrapper.balance()
             assert balance is not None
@@ -295,7 +294,7 @@ class Trader(object):
                 assert quote in balance
                 price = coef * ticker[0]
                 assert price > 0
-                amount = fee * balance[quote][0] / price
+                amount = self.Toolkit.Quota / price
             else:
                 if base not in balance: return
                 assert referential is not None
