@@ -16,12 +16,12 @@ class Trader(object):
         self.Indicator = indicator
         self.Wrapper = self.Indicator.Wrapper
         self.Brand = self.Wrapper.Brand
+        self.Toolkit = self.Wrapper.Toolkit
 
         self._unity = .1 * self.Toolkit.Phi
         self._first, self._last = 0, 0
         self._symbols = set()
 
-        self.Toolkit = self.Wrapper.Toolkit
         self.log = self.Toolkit.log
         self.log(self.Toolkit.Greeting, self)
 
