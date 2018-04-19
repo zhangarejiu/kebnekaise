@@ -140,7 +140,7 @@ class Trader(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def _flush(self, last_orders):
+    def _flush(self, last_orders, threshold=3):
         """
         This will close positions that are causing losses.
         """
@@ -161,7 +161,7 @@ class Trader(object):
                 if not self.Toolkit.halt():
                     equity = abs(amount) * self._value(symbol[0], 'btc')
 
-                    if 0 < equity < (1 - self._unity / 2) * self.Toolkit.Quota:
+                    if 0 < equity < (1 - threshold / 100) * self.Toolkit.Quota:
                         self.log('', self)
                         self.log('Canceling order [{0}]...'.format(oid), self)
                         assert self.Wrapper.orders(oid) is not None
@@ -256,7 +256,7 @@ class Trader(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def _chase(self, balance, broadway, rchoice=True):
+    def _chase(self, balance, broadway, rchoice=False):
         """
         Ensures that the given symbol is bought & sold by the best market conditions.
         """

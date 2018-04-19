@@ -30,6 +30,13 @@ class Indicator(object):
         try:
             self._update()
 
+            if not len(self._cache) > 0:
+                self.log('', self)
+                self.log('Error while updating DB, trying again now...', self)
+
+                self._upd8ed = 0
+                return self.broadway()
+
             self.log('', self)
             self.log('Calculating financial indexes for {0} symbols...'
                      .format(len(self._cache)), self)
@@ -52,7 +59,7 @@ class Indicator(object):
             self.log('Current selection is: ' + str(bw), self)
 
             t_delta = time.time() - t_delta
-            av_delta = t_delta / len(self._cache)
+            av_delta = t_delta / max(len(self._cache), 1)
             stats = round(t_delta, 3), round(av_delta, 5)
 
             self.log('', self)
@@ -95,7 +102,7 @@ class Indicator(object):
             self._cache = {k: v for k, v in self._cache.items() if len(v) > 0}
 
             t_delta = time.time() - t_delta
-            av_delta = t_delta / len(self._cache)
+            av_delta = t_delta / max(len(self._cache), 1)
             stats = round(t_delta, 3), round(av_delta, 5)
 
             self.log('', self)
