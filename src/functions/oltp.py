@@ -37,7 +37,7 @@ class Trader(object):
                 self._symbols = self.Wrapper.symbols()
                 assert self._symbols is not None
 
-                report = self._report(self._review(self._clear()))
+                report = self._report(self._flush(self._review(self._clear())))
                 assert report is not None
 
                 broadway = self.Indicator.broadway()
@@ -74,7 +74,7 @@ class Trader(object):
 
         try:
             self.log('', self)
-            self.log('Checking for altcoin balances not involved in alive orders.', self)
+            self.log('CLEAR: Checking for altcoin balances not involved in alive orders.', self)
             t_delta = time.time()
 
             balance = self.Wrapper.balance()
@@ -113,7 +113,7 @@ class Trader(object):
 
         try:
             self.log('', self)
-            self.log('Reviewing profit targets for your current positions...', self)
+            self.log('REVIEW: Reviewing profit targets for your current positions...', self)
             t_delta = time.time()
 
             orders = self.Wrapper.orders()
@@ -135,6 +135,44 @@ class Trader(object):
             t_delta = round(time.time() - t_delta, 3)
             self.log('', self)
             self.log('...review done in {0} seconds.'.format(t_delta), self)
+
+            return orders
+        except:
+            self.log(traceback.format_exc(), self)
+
+    def _flush(self, last_orders, threshold=5):
+        """
+        This will close positions that are causing losses.
+        """
+
+        try:
+            self.log('', self)
+            self.log('FLUSH: Removing any assets that failed to become profitable...', self)
+            t_delta = time.time()
+
+            orders = self.Wrapper.orders()
+            assert orders is not None
+
+            if last_orders != orders:
+                self.log('', self)
+                self.log('Your currently active orders are: ' + str(orders), self)
+
+            for oid, (amount, price, symbol) in orders.items():
+                if not self.Toolkit.halt():
+                    equity = amount * self._value(symbol[0], 'btc')
+
+                    if 0 < equity < (1 - threshold / 100) * self.Toolkit.Quota:
+                        self.log('', self)
+                        self.log('Canceling order [{0}]...'.format(oid), self)
+                        assert self.Wrapper.orders(oid) is not None
+
+                        ticker = self.Toolkit.ticker(self.Brand, symbol)
+                        assert ticker is not None
+                        self._burn(symbol, -3, ticker[1], False)
+
+            t_delta = round(time.time() - t_delta, 3)
+            self.log('', self)
+            self.log('...removal done in {0} seconds.'.format(t_delta), self)
 
             return orders
         except:

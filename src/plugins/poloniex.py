@@ -193,6 +193,9 @@ class Wrapper(object):
         base_uri = 'https://poloniex.com/'
 
         try:
+            if self.Toolkit.halt():
+                return
+
             # SECURITY DELAY: in order to NOT get your IP banned!
             time.sleep(1 / 3)
 
