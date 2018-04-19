@@ -159,7 +159,7 @@ class Trader(object):
 
             for oid, (amount, price, symbol) in orders.items():
                 if not self.Toolkit.halt():
-                    equity = amount * self._value(symbol[0], 'btc')
+                    equity = abs(amount) * self._value(symbol[0], 'btc')
 
                     if 0 < equity < (1 - threshold / 100) * self.Toolkit.Quota:
                         self.log('', self)
