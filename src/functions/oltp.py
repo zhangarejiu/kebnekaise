@@ -91,7 +91,7 @@ class Trader(object):
                 symbol = currency, 'btc'
 
                 if symbol in self._symbols and not self.Toolkit.halt():
-                    eligible = available * self._value(*symbol) > self.Toolkit.Quota
+                    eligible = available * self._value(*symbol) > self.Toolkit.Quota / self.Toolkit.Phi
 
                     if eligible and currency not in engaged:
                         ticker = self.Toolkit.ticker(self.Brand, symbol)
@@ -140,7 +140,7 @@ class Trader(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def _flush(self, last_orders, threshold=5):
+    def _flush(self, last_orders):
         """
         This will close positions that are causing losses.
         """
@@ -161,14 +161,14 @@ class Trader(object):
                 if not self.Toolkit.halt():
                     equity = abs(amount) * self._value(symbol[0], 'btc')
 
-                    if 0 < equity < (1 - threshold / 100) * self.Toolkit.Quota:
+                    if 0 < equity < (1 - self._unity / 2) * self.Toolkit.Quota:
                         self.log('', self)
                         self.log('Canceling order [{0}]...'.format(oid), self)
                         assert self.Wrapper.orders(oid) is not None
 
                         ticker = self.Toolkit.ticker(self.Brand, symbol)
                         assert ticker is not None
-                        self._burn(symbol, -3, ticker[1], False)
+                        self._burn(symbol, -30 * self._unity, ticker[1], False)
 
             t_delta = round(time.time() - t_delta, 3)
             self.log('', self)
