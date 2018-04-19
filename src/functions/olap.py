@@ -52,8 +52,9 @@ class Indicator(object):
             self.log('', self)
             self.log('Financial indexes are: ' + str(bw), self)
 
-            bw = {k: v for k, v in bw.items() if v > 0}
+            bw = {k: v for k, v in bw.items() if 5 < v < 10}
             bw = dict(sorted(bw.items(), key=lambda k: k[1])[-5:])
+            bw = [bw, {}][len(bw) < 2]
 
             self.log('', self)
             self.log('Current selection is: ' + str(bw), self)

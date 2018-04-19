@@ -32,6 +32,8 @@ class Wrapper(object):
         """
         """
 
+        req = {}
+
         try:
             req = self._request('public?command=returnTicker', False)
             assert req is not None
@@ -43,11 +45,13 @@ class Wrapper(object):
                 return {s for s in tmp if s[1] == 'btc'}
             return tmp
         except:
-            self.log(traceback.format_exc(), self)
+            self._err(traceback.format_exc(), req)
 
     def book(self, symbol, margin=1):
         """
         """
+
+        req = {}
 
         try:
             req = self._request('public?command=returnOrderBook&currencyPair=' +
@@ -67,11 +71,13 @@ class Wrapper(object):
         except KeyError:
             return {}
         except:
-            self.log(traceback.format_exc(), self)
+            self._err(traceback.format_exc(), req)
 
     def history(self, symbol, cutoff=None):
         """
         """
+
+        req = {}
 
         try:
             if cutoff is not None:
@@ -110,11 +116,13 @@ class Wrapper(object):
         except KeyError:
             return []
         except:
-            self.log(traceback.format_exc(), self)
+            self._err(traceback.format_exc(), req)
 
     def balance(self):
         """
         """
+
+        req = {}
 
         try:
             req = self._request(('tradingApi', {'command': 'returnCompleteBalances'},))
@@ -128,7 +136,7 @@ class Wrapper(object):
                     tmp[key.lower()] = (available, on_orders)
             return tmp
         except:
-            self.log(traceback.format_exc(), self)
+            self._err(traceback.format_exc(), req)
 
     def fire(self, amount, price, symbol):
         """
@@ -150,14 +158,13 @@ class Wrapper(object):
 
             return int(req['orderNumber'])
         except:
-            self.log(traceback.format_exc(), self)
-
-            self.log('', self)
-            self.log('Response: ' + str(req), self)
+            self._err(traceback.format_exc(), req)
 
     def orders(self, order_id=None):
         """
         """
+
+        req = {}
 
         try:
             if order_id is None:
@@ -184,7 +191,7 @@ class Wrapper(object):
             time.sleep(10)
             return tmp
         except:
-            self.log(traceback.format_exc(), self)
+            self._err(traceback.format_exc(), req)
 
     def _request(self, req_uri, signing=True):
         """
@@ -217,3 +224,16 @@ class Wrapper(object):
         except:
             self.log(traceback.format_exc(), self)
             return
+
+    def _err(self, tback, resp):
+        """
+        """
+
+        try:
+            self.log('', self)
+            self.log(tback, self)
+
+            self.log('', self)
+            self.log('Response: ' + str(resp), self)
+        except:
+            self.log(traceback.format_exc(), self)

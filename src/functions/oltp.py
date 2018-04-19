@@ -16,16 +16,21 @@ class Trader(object):
         self.Indicator = indicator
         self.Wrapper = self.Indicator.Wrapper
         self.Brand = self.Wrapper.Brand
-        self._first, self._last, self._unity = 0, 0, .1
+
+        self._unity = .1 * self.Toolkit.Phi
+        self._first, self._last = 0, 0
         self._symbols = set()
 
         self.Toolkit = self.Wrapper.Toolkit
         self.log = self.Toolkit.log
         self.log(self.Toolkit.Greeting, self)
 
-    def probe(self):
+    def probe(self, stop_loss=True):
         """
         Detecting some good trading opportunities...
+
+        Important: If you wanna test some new crazy symbol by risking quantities much
+        below 'self.Toolkit.Quota', simply define 'stop_loss=False' here.
         """
 
         try:
@@ -37,7 +42,10 @@ class Trader(object):
                 self._symbols = self.Wrapper.symbols()
                 assert self._symbols is not None
 
-                report = self._report(self._flush(self._review(self._clear())))
+                if not stop_loss:
+                    report = self._report(self._review(self._clear()))
+                else:
+                    report = self._report(self._flush(self._review(self._clear())))
                 assert report is not None
 
                 broadway = self.Indicator.broadway()
@@ -91,7 +99,7 @@ class Trader(object):
                 symbol = currency, 'btc'
 
                 if symbol in self._symbols and not self.Toolkit.halt():
-                    eligible = available * self._value(*symbol) > self.Toolkit.Quota / self.Toolkit.Phi
+                    eligible = available * self._value(*symbol) > self.Toolkit.Quota / 2
 
                     if eligible and currency not in engaged:
                         ticker = self.Toolkit.ticker(self.Brand, symbol)
