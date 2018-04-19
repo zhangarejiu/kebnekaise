@@ -9,6 +9,6 @@ rm -f ${APPHOME}/logs/.halt
 #rm -fR ${APPHOME}/data
 
 mkdir -p ${APPHOME}/logs
-mkdir -p ${APPHOME}/data
+#mkdir -p ${APPHOME}/data
 
 ${PYTHON_ENV} -m src.main ${APPHOME} &
