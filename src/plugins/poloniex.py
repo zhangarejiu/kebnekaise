@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 import json
+import random
 import time
 import traceback
 
@@ -160,7 +161,7 @@ class Wrapper(object):
         except:
             self._err(traceback.format_exc(), req)
 
-    def orders(self, order_id=None):
+    def orders(self, order_id=None, recheck=3):
         """
         """
 
@@ -181,14 +182,19 @@ class Wrapper(object):
                     for pair_str, orders_list in req.items()
                     for d in orders_list if len(orders_list) > 0
                 }
+
+                if len(tmp) == 0 < recheck:
+                    time.sleep(3)
+                    recheck -= 1
+                    return self.orders(order_id, recheck)
             else:
-                req = self._request(('tradingApi', {'command': 'cancelOrder',
-                                                    'orderNumber': order_id, },))
+                req = self._request(('tradingApi', {
+                    'command': 'cancelOrder', 'orderNumber': order_id, },))
                 assert req is not None
                 tmp = -order_id
 
             # Delaying a bit, to allow the site to recognize newly created / canceled orders...
-            time.sleep(10)
+            time.sleep(random.randint(5, 9))
             return tmp
         except:
             self._err(traceback.format_exc(), req)

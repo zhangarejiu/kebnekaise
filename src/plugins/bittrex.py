@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 import json
+import random
 import time
 import traceback
 
@@ -160,7 +161,7 @@ class Wrapper(object):
         except:
             self._err(traceback.format_exc(), req)
 
-    def orders(self, order_id=None):
+    def orders(self, order_id=None, recheck=3):
         """
         """
 
@@ -179,13 +180,18 @@ class Wrapper(object):
                     )
                     for d in req['result']
                 }
+
+                if len(tmp) == 0 < recheck:
+                    time.sleep(3)
+                    recheck -= 1
+                    return self.orders(order_id, recheck)
             else:
                 req = self._request(('market/cancel?', {'uuid': order_id, },))
                 assert req['success'] is True
                 tmp = '-' + order_id.upper()
 
             # Delaying a bit, to allow the site to recognize newly created / canceled orders...
-            time.sleep(20)
+            time.sleep(random.randint(5, 9))
             return tmp
         except:
             self._err(traceback.format_exc(), req)
