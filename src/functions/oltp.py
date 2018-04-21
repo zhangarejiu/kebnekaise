@@ -148,7 +148,7 @@ class Trader(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def _flush(self, last_orders, threshold=3):
+    def _flush(self, last_orders, threshold=5):
         """
         This will close positions that are causing losses.
         """
