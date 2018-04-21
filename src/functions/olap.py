@@ -175,7 +175,7 @@ class Indicator(object):
 
             tmp, V = [], []
             while len(tmp) < population:
-                t = _trend(self.Wrapper.book(symbol, 5))
+                t = _trend(self.Wrapper.book(symbol))
                 if t is not None:
                     tmp.append(t)
 
