@@ -59,9 +59,12 @@ class Indicator(object):
             self.log('', self)
             self.log('Current selection is: ' + str(bw), self)
 
-            if self._nakamoto():
+            btc_up = self._nakamoto()
+            assert btc_up is not None
+
+            if btc_up:
                 self.log('', self)
-                self.log('But it seems that BTC is in a bullish trend: clearing that selection.', self)
+                self.log('But it seems that BTC is in a bullish trend: I\'ll clear that!', self)
                 bw = {}
 
             t_delta = time.time() - t_delta

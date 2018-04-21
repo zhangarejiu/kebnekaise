@@ -6,6 +6,7 @@ import traceback
 
 class Database(object):
     """
+    Another simplified solution for persistence.
     """
 
     def __init__(self, wrapper):

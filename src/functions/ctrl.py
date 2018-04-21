@@ -200,7 +200,7 @@ class Auditor(object):
         self.log = self.Toolkit.log
         self.log(self.Toolkit.Greeting, self)
 
-    def test(self, fire_mode=True):
+    def test(self, fire_mode=False):
         """
         For each plugin, this will test all the functions on it.
         """
