@@ -191,9 +191,6 @@ class Wrapper(object):
         base_uri = 'https://bittrex.com/api/v1.1/'
 
         try:
-            if self.Toolkit.halt():
-                return {'success': False}
-
             # SECURITY DELAY: in order to NOT get your IP banned!
             time.sleep(1 / 3)
 

@@ -98,7 +98,7 @@ class Trader(object):
             for currency, (available, _) in balance.items():
                 symbol = currency, 'btc'
 
-                if symbol in self._symbols and not self.Toolkit.halt():
+                if symbol in self._symbols:
                     eligible = available * self._value(*symbol) > self.Toolkit.Quota / 2
 
                     if eligible and currency not in engaged:
@@ -133,11 +133,10 @@ class Trader(object):
 
             if t_delta - self._last > 3600:
                 for oid, (amount, price, symbol) in orders.items():
-                    if not self.Toolkit.halt():
-                        self.log('', self)
-                        self.log('Canceling order [{0}]...'.format(oid), self)
-                        assert self.Wrapper.orders(oid) is not None
-                        self._burn(symbol, -1 * self._unity, price)
+                    self.log('', self)
+                    self.log('Canceling order [{0}]...'.format(oid), self)
+                    assert self.Wrapper.orders(oid) is not None
+                    self._burn(symbol, -1 * self._unity, price)
                 self._last = t_delta
 
             t_delta = round(time.time() - t_delta, 3)
@@ -166,22 +165,20 @@ class Trader(object):
                 self.log('Your currently active orders are: ' + str(orders), self)
 
             for oid, (amount, price, symbol) in orders.items():
-                if not self.Toolkit.halt():
-                    equity = abs(amount) * self._value(symbol[0], 'btc')
+                equity = abs(amount) * self._value(symbol[0], 'btc')
 
-                    if 0 < equity < (1 - threshold / 100) * self.Toolkit.Quota:
-                        self.log('', self)
-                        self.log('Canceling order [{0}]...'.format(oid), self)
-                        assert self.Wrapper.orders(oid) is not None
+                if 0 < equity < (1 - threshold / 100) * self.Toolkit.Quota:
+                    self.log('', self)
+                    self.log('Canceling order [{0}]...'.format(oid), self)
+                    assert self.Wrapper.orders(oid) is not None
 
-                        ticker = self.Toolkit.ticker(self.Brand, symbol)
-                        assert ticker is not None
-                        self._burn(symbol, -30 * self._unity, ticker[1], False)
+                    ticker = self.Toolkit.ticker(self.Brand, symbol)
+                    assert ticker is not None
+                    self._burn(symbol, -30 * self._unity, ticker[1], False)
 
             t_delta = round(time.time() - t_delta, 3)
             self.log('', self)
             self.log('...removal done in {0} seconds.'.format(t_delta), self)
-
             return orders
         except:
             self.log(traceback.format_exc(), self)
@@ -207,8 +204,7 @@ class Trader(object):
 
             self.log('', self)
             self.log('Your current BALANCE is: ' + str(balance), self)
-            self.log('That\'s equals approximately to BTC {0} (USD {1}).'.format(
-                *holdings), self)
+            self.log('That\'s equals approximately to BTC {0} (USD {1}).'.format(*holdings), self)
             return balance, holdings
         except:
             self.log(traceback.format_exc(), self)
@@ -220,9 +216,11 @@ class Trader(object):
 
         try:
             fee = 1 - self.Wrapper.Fee / 100
-            usd_total, btc_total = 0., sum(
-                (a + o) * self._value(c, 'btc') for c, (a, o) in balance.items()
-                if not (c.startswith('usd') or self.Toolkit.halt()))
+            btc_total = sum(
+                (a + o) * self._value(c, 'btc')
+                for c, (a, o) in balance.items() if not c.startswith('usd')
+            )
+            usd_total = 0.
 
             ticker = self.Toolkit.ticker(self.Brand, ('btc', 'usdt',))
             assert ticker is not None
@@ -290,14 +288,11 @@ class Trader(object):
             self._first = None
 
             self.log('', self)
-            if chosen in {s for a, p, s in self.Wrapper.orders().values()
-                          if not self.Toolkit.halt()}:
-                self.log('But it\'s one of your current assets: ' +
-                         'nothing to do.', self)
+            if chosen in {s for a, p, s in self.Wrapper.orders().values()}:
+                self.log('But it\'s one of your current assets: nothing to do.', self)
 
             elif balance['btc'][0] < self.Toolkit.Quota:
-                self.log('But apparently all of your funds are engaged already: ' +
-                         'nothing to do.', self)
+                self.log('But apparently all of your funds are engaged already: nothing to do.', self)
             else:
                 self.log('STARTING TRADE PROCEDURES FOR SYMBOL: ' + str(chosen), self)
 

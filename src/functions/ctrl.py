@@ -23,7 +23,7 @@ class Toolkit(object):
         self.CParser = ConfigParser(allow_no_value=True)
         self.CParser.read(self.Path + '/bin/conf.ini')
         self.Plugins = self._plugins()
-        self.Orbit = 5  # minutes
+        self.Orbit = 4  # minutes
         self.Quota = 1E-3  # bitcoins
 
         self.Phi = (1 + 5 ** .5) / 2  # https://en.wikipedia.org/wiki/Golden_ratio
@@ -207,8 +207,7 @@ class Auditor(object):
 
         try:
             self.log('', self)
-            self.log('Starting test of the \'{0}\' API wrapper...'.format(
-                self.Brand.upper()), self)
+            self.log('Starting test of the \'{0}\' API wrapper...'.format(self.Brand.upper()), self)
 
             quiz = [self._symbols, self._book, self._history, self._balance, self._buy,
                     self._sell, self._orders, self._cancel]
@@ -219,8 +218,7 @@ class Auditor(object):
                     func()
 
             self.log('', self)
-            self.log('All tests DONE with {0} error(s). Exiting...'.format(
-                self._cache['errors']), self)
+            self.log('All tests DONE with {0} error(s). Exiting...'.format(self._cache['errors']), self)
             return self._cache['errors'] == 0
         except:
             self.log(traceback.format_exc(), self)
@@ -306,9 +304,8 @@ class Auditor(object):
 
             if self._cache['balance']['btc'][0] < self.Toolkit.Quota:
                 self.log('', self)
-                self.log('BALANCE ERROR: please make sure you have at least BTC ' +
-                         str(self.Toolkit.Quota) + ' available in your account, in ' +
-                         'order to proceed with other tests.', self)
+                self.log('BALANCE ERROR: please make sure you have at least BTC ' + str(self.Toolkit.Quota) +
+                         ' available in your account, in order to proceed with other tests.', self)
                 self._cache['errors'] += 1
         except:
             self.log(traceback.format_exc(), self)

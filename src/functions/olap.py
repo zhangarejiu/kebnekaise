@@ -38,8 +38,7 @@ class Indicator(object):
                 return self.broadway()
 
             self.log('', self)
-            self.log('Calculating financial indexes for {0} symbols...'
-                     .format(len(self._cache)), self)
+            self.log('Calculating financial indexes for {0} symbols...'.format(len(self._cache)), self)
             t_delta = time.time()
 
             bw = {s: self._index(s) for s in self._cache if not self.Toolkit.halt()}
@@ -90,24 +89,23 @@ class Indicator(object):
                 self._calcul8ed = False
 
             self.log('', self)
-            self.log('Updating BOOK/HISTORY/OHLC info about symbols: ' +
-                     str(set(self._cache)), self)
+            self.log('Updating BOOK/HISTORY/OHLC info about symbols: ' + str(set(self._cache)), self)
 
             self.log('', self)
             self.log('({0} total)'.format(len(self._cache)), self)
 
             for s in self._cache:
-                if not self.Toolkit.halt():
-                    self._cache[s]['book'] = self.Wrapper.book(s, 1)
+                self._cache[s]['book'] = self.Wrapper.book(s, 1)
+                if self.Toolkit.halt(): break
 
-                if not self.Toolkit.halt():
-                    self._cache[s]['history'] = self.Wrapper.history(s, t_delta)
+                self._cache[s]['history'] = self.Wrapper.history(s, t_delta)
+                if self.Toolkit.halt(): break
 
-                if not self.Toolkit.halt():
-                    self._cache[s]['ohlc'] = self.Wrapper.history(s)
+                self._cache[s]['ohlc'] = self.Wrapper.history(s)
+                if self.Toolkit.halt(): break
 
-                if None in self._cache[s].values():
-                    self._cache[s] = {}
+                if None in self._cache[s].values(): self._cache[s] = {}
+
             self._cache = {k: v for k, v in self._cache.items() if len(v) > 0}
 
             t_delta = time.time() - t_delta
