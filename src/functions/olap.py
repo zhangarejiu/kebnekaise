@@ -227,6 +227,8 @@ class Indicator(object):
                 return
 
             nakamoto = 'btc', 'usdt'
+            self._cache[nakamoto] = {}
+
             self._cache[nakamoto]['book'] = self.Wrapper.book(nakamoto, 1)
             self._cache[nakamoto]['history'] = self.Wrapper.history(nakamoto, time.time())
             self._cache[nakamoto]['ohlc'] = self.Wrapper.history(nakamoto)
