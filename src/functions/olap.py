@@ -51,7 +51,7 @@ class Indicator(object):
             self.log('', self)
             self.log('Financial indexes are: ' + str(bw), self)
 
-            bw = {k: v for k, v in bw.items() if 5 < v < 10}
+            bw = {k: round(v, 3) for k, v in bw.items() if 5 < v < 10}
             bw = dict(sorted(bw.items(), key=lambda k: k[1])[-5:])
             bw = [bw, {}][len(bw) < 3]
 
@@ -83,7 +83,7 @@ class Indicator(object):
 
         try:
             t_delta = time.time()
-            if (t_delta - self._upd8ed) / 60 > 6 * self.Toolkit.Orbit:
+            if (t_delta - self._upd8ed) / 60 > 5 * self.Toolkit.Orbit:
                 self._cache = {s: {} for s in self.Wrapper.symbols()}
                 self._upd8ed = t_delta
                 self._calcul8ed = False
@@ -95,17 +95,17 @@ class Indicator(object):
             self.log('({0} total)'.format(len(self._cache)), self)
 
             for s in self._cache:
-                self._cache[s]['book'] = self.Wrapper.book(s, 1)
-                if self.Toolkit.halt(): break
+                if not self.Toolkit.halt():
+                    self._cache[s]['book'] = self.Wrapper.book(s, 5)
 
-                self._cache[s]['history'] = self.Wrapper.history(s, t_delta)
-                if self.Toolkit.halt(): break
+                if not self.Toolkit.halt():
+                    self._cache[s]['history'] = self.Wrapper.history(s, t_delta)
 
-                self._cache[s]['ohlc'] = self.Wrapper.history(s)
-                if self.Toolkit.halt(): break
+                if not self.Toolkit.halt():
+                    self._cache[s]['ohlc'] = self.Wrapper.history(s)
 
-                if None in self._cache[s].values(): self._cache[s] = {}
-
+                if None in self._cache[s].values():
+                    self._cache[s] = {}
             self._cache = {k: v for k, v in self._cache.items() if len(v) > 0}
 
             t_delta = time.time() - t_delta
@@ -126,7 +126,7 @@ class Indicator(object):
                 return
 
             v = self._volatility(symbol)  # last 24 hours
-            t = self._trend(symbol)  # last 20 minutes
+            t = self._trend(symbol)  # last 30 minutes
             m = self._momentum(symbol)  # right now
 
             if None not in [m, t, v]:
@@ -189,7 +189,7 @@ class Indicator(object):
                     tmp2 = [v, p]
             tmp3.reverse()
 
-            if len(tmp3) > 20:
+            if len(tmp3) > 50:
                 p_open, p_high, p_low, p_close = tmp3[0], max(tmp3), min(tmp3), tmp3[-1]
                 if p_close < 1E-5:  # getting rid of DOGE etc.
                     return
@@ -230,7 +230,7 @@ class Indicator(object):
             nakamoto = 'btc', 'usdt'
             self._cache[nakamoto] = {}
 
-            self._cache[nakamoto]['book'] = self.Wrapper.book(nakamoto, 1)
+            self._cache[nakamoto]['book'] = self.Wrapper.book(nakamoto, 5)
             self._cache[nakamoto]['history'] = self.Wrapper.history(nakamoto, time.time())
             self._cache[nakamoto]['ohlc'] = self.Wrapper.history(nakamoto)
 

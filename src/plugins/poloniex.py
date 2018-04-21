@@ -75,10 +75,10 @@ class Wrapper(object):
 
         try:
             if cutoff is not None:
-                # last 20 minutes trades history
+                # last 30 minutes trades history
 
                 end = int(cutoff - cutoff % 60)
-                start = end - 1200
+                start = end - 1800
                 params = '_'.join(symbol[::-1]).upper(), start, end
 
                 req = self._request('public?command=returnTradeHistory&currencyPair='

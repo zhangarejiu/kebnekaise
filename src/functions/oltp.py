@@ -298,8 +298,8 @@ class Trader(object):
 
                 buying = self._burn(chosen, self._unity)
                 if buying is None: return
-
                 self.Toolkit.wait(self.Toolkit.Orbit)
+
                 if buying[1] in self.Wrapper.orders():
                     self.Wrapper.orders(buying[1])
                 selling = self._burn(chosen, -10 * self._unity, buying[0]['price'])

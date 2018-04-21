@@ -79,13 +79,13 @@ class Wrapper(object):
             params = {'market': '-'.join(symbol[::-1]), }
 
             if cutoff is not None:
-                # last 20 minutes trades history
+                # last 30 minutes trades history
 
                 req = self._request('public/getmarkethistory?' + parse.urlencode(params), False)
                 assert req['success']
 
                 end = int(cutoff - cutoff % 60)
-                start = end - 1200
+                start = end - 1800
 
                 if req['result'] is not None:
                     tmp = [(timegm(time.strptime(d['TimeStamp'][:19], self.fmt)),
