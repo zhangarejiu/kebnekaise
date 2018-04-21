@@ -22,6 +22,7 @@ class Wrapper(object):
         """
 
         self.Brand, self.Fee = 'poloniex', .25
+        self.fmt = '%Y-%m-%d %H:%M:%S'
         self._fails = 0
 
         self.Toolkit = toolkit
@@ -77,15 +78,14 @@ class Wrapper(object):
             if cutoff is not None:
                 # last 30 minutes trades history
 
-                end = int(cutoff - cutoff % 60)
+                end = int(cutoff - cutoff % (60 * self.Toolkit.Orbit))
                 start = end - 1800
                 params = '_'.join(symbol[::-1]).upper(), start, end
-
                 req = self._request('public?command=returnTradeHistory&currencyPair='
                                     + '{0}&start={1}&end={2}'.format(*params), False)
                 assert req is not None
 
-                tmp = [(timegm(time.strptime(d['date'], '%Y-%m-%d %H:%M:%S')),
+                tmp = [(timegm(time.strptime(d['date'], self.fmt)),
                         [-1, 1][d['type'] == 'buy'] * float(d['amount']),
                         float(d['rate'])) for d in req]
                 tmp = [(epoch, amount, price,) for epoch, amount, price in tmp
@@ -96,10 +96,9 @@ class Wrapper(object):
                 # last 24 hours "OPEN|HIGH|LOW|CLOSE" prices
 
                 now = int(time.time())
-                end = now - now % 60
+                end = now - now % (60 * self.Toolkit.Orbit)
                 start = end - 86400
                 params = '_'.join(symbol[::-1]).upper(), start, end
-
                 req = self._request('public?command=returnChartData&currencyPair='
                                     + '{0}&start={1}&end={2}&period=7200'.format(*params), False)
                 assert req is not None

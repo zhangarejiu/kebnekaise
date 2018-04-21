@@ -84,7 +84,7 @@ class Wrapper(object):
                 req = self._request('public/getmarkethistory?' + parse.urlencode(params), False)
                 assert req['success']
 
-                end = int(cutoff - cutoff % 60)
+                end = int(cutoff - cutoff % (60 * self.Toolkit.Orbit))
                 start = end - 1800
 
                 if req['result'] is not None:

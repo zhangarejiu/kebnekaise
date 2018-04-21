@@ -14,9 +14,7 @@ class Indicator(object):
 
         self.Wrapper = wrapper
         self.Brand = self.Wrapper.Brand
-
-        self._cache = {}
-        self._upd8ed, self._calcul8ed = 0, None
+        self._cache, self._updated = {}, 0.
 
         self.Toolkit = self.Wrapper.Toolkit
         self.log = self.Toolkit.log
@@ -30,41 +28,30 @@ class Indicator(object):
         try:
             self._update()
 
-            if not len(self._cache) > 0:
-                self.log('', self)
-                self.log('Error while updating DB, trying again now...', self)
-
-                self._upd8ed = 0
-                return self.broadway()
-
             self.log('', self)
-            self.log('Calculating financial indexes for {0} symbols...'.format(len(self._cache)), self)
+            self.log('Updating dataset of top symbols...', self)
             t_delta = time.time()
 
-            bw = {s: self._index(s) for s in self._cache if not self.Toolkit.halt()}
-            bw = {k: v for k, v in bw.items() if v is not None}
+            ratio = len(self._cache) / len(self.Wrapper.symbols())
+            tail = str(round(100 * ratio, 3)) + ' % of the symbols in uptrend.'
 
-            if not self._calcul8ed:
-                self._cache = {s: {} for s in bw}
-                self._calcul8ed = True
-
-            self.log('', self)
-            self.log('Financial indexes are: ' + str(bw), self)
-
-            bw = {k: round(v, 3) for k, v in bw.items() if 5 < v < 10}
-            bw = dict(sorted(bw.items(), key=lambda k: k[1])[-5:])
-            bw = [bw, {}][len(bw) < 3]
+            tmp = {s: i for s, i in self._cache.items() if i > 0}
+            tmp = {k: round(v, 3) for k, v in tmp.items()}
 
             self.log('', self)
-            self.log('Current selection is: ' + str(bw), self)
+            self.log('Financial indexes are: ' + str(tmp), self)
 
-            btc_up = self._nakamoto()
-            assert btc_up is not None
+            self.log('', self)
+            if ratio > 2 / 3:
+                self.log('Altcoins UP: ' + tail, self)
+                tmp = dict(sorted(tmp.items(), key=lambda k: k[1])[-5:])
+            else:
+                self.log('Altcoins DOWN: ' + tail, self)
+                tmp = {}
+            tmp = [tmp, {}][len(tmp) < 3]
 
-            if btc_up:
-                self.log('', self)
-                self.log('But it seems that BTC is in a bullish trend: I\'ll clear that!', self)
-                bw = {}
+            self.log('', self)
+            self.log('Current selection is: ' + str(tmp), self)
 
             t_delta = time.time() - t_delta
             av_delta = t_delta / max(len(self._cache), 1)
@@ -72,52 +59,59 @@ class Indicator(object):
 
             self.log('', self)
             self.log('...calculation done in {0} s, average {1} s/symbol.'.format(*stats), self)
-            return bw
+            return tmp
         except:
             self.log(traceback.format_exc(), self)
 
     def _update(self):
         """
-        Downloads the book of orders and trades history info.
         """
 
         try:
+            if self.Toolkit.halt():
+                return
+
+            self.log('', self)
+            self.log('Updating financial indexes DB...', self)
             t_delta = time.time()
-            if (t_delta - self._upd8ed) / 60 > 5 * self.Toolkit.Orbit:
-                self._cache = {s: {} for s in self.Wrapper.symbols()}
-                self._upd8ed = t_delta
-                self._calcul8ed = False
+
+            if (t_delta - self._updated) / 60 > 5 * self.Toolkit.Orbit:
+                for s in self.Wrapper.symbols():
+                    t = self._long_trend(s)
+                    if t is not None and t > 0:
+                        self._cache[s] = 0.
+                self._updated = t_delta
 
             self.log('', self)
-            self.log('Updating BOOK/HISTORY/OHLC info about symbols: ' + str(set(self._cache)), self)
+            self.log('Target symbols: ' + str(set(self._cache)), self)
 
-            self.log('', self)
-            self.log('({0} total)'.format(len(self._cache)), self)
+            now = time.time()
+            for s in self._cache:
+                self._cache[s] = 0.
+                st = self._short_trend(s, now)
+                if st is not None and st < 0:
+                    self._cache[s] = -st
 
             for s in self._cache:
-                if not self.Toolkit.halt():
-                    self._cache[s]['book'] = self.Wrapper.book(s, 5)
+                if self._cache[s] > 0:
+                    st = self._cache[s]
+                    vt = self._volume_trend(s)
 
-                if not self.Toolkit.halt():
-                    self._cache[s]['history'] = self.Wrapper.history(s, t_delta)
-
-                if not self.Toolkit.halt():
-                    self._cache[s]['ohlc'] = self.Wrapper.history(s)
-
-                if None in self._cache[s].values():
-                    self._cache[s] = {}
-            self._cache = {k: v for k, v in self._cache.items() if len(v) > 0}
+                    if vt is not None and vt > 0:
+                        self._cache[s] = self.Toolkit.smooth(vt / st)
+                    else:
+                        self._cache[s] = 0.
 
             t_delta = time.time() - t_delta
             av_delta = t_delta / max(len(self._cache), 1)
             stats = round(t_delta, 3), round(av_delta, 5)
 
             self.log('', self)
-            self.log('...download done in {0} s, average {1} s/symbol.'.format(*stats), self)
+            self.log('...update done in {0} s, average {1} s/symbol.'.format(*stats), self)
         except:
             self.log(traceback.format_exc(), self)
 
-    def _index(self, symbol):
+    def _long_trend(self, symbol):
         """
         """
 
@@ -125,124 +119,67 @@ class Indicator(object):
             if self.Toolkit.halt():
                 return
 
-            v = self._volatility(symbol)  # last 24 hours
-            t = self._trend(symbol)  # last 30 minutes
-            m = self._momentum(symbol)  # right now
-
-            if None not in [m, t, v]:
-                return self.Toolkit.smooth(m * -t * v)
+            ohlc = self.Wrapper.history(symbol)
+            if ohlc is not None:
+                p_open, p_high, p_low, p_close = ohlc
+                if p_open > 0:
+                    return 100 * (p_close / p_open - 1)
+            return 0.
         except:
             self.log(traceback.format_exc(), self)
 
-    def _momentum(self, symbol):
+    def _short_trend(self, symbol, cutoff):
         """
-        How many % does the volume in BIDS exceed the volume in ASKS?
-
-        From:
-            Algorithmic Trading: Winning Strategies and Their Rationale
-            Chan, Ernest P., 2013 - page 164 (ISBN-13: 978-1118460146)
         """
 
         try:
             if self.Toolkit.halt():
                 return
 
-            asks, bids = 0, 0
-            for amount in self._cache[symbol]['book'].values():
-                if amount > 0:
-                    asks += amount
-                else:
-                    bids += amount
+            tmp, V = [0, 0], []
+            history = self.Wrapper.history(symbol, cutoff)
 
-            if asks != 0:
-                m = 100 * (abs(bids / asks) - 1)
-                return [None, m][m > 0]
+            for epoch1, amount1, price1 in history:
+                for epoch2, amount2, price2 in history:
+                    if epoch2 > epoch1 and -amount2 >= amount1 > 0:
+                        V.append(amount1 - amount2)
+                        tmp[0] += 100 * (price2 / price1 - 1)
+                        tmp[1] += 1
+            V = sum(V) / max(len(V), 1)
+
+            if tmp[1] > 0:
+                return V * tmp[0] / tmp[1]
+            return 0.
         except:
             self.log(traceback.format_exc(), self)
 
-    def _trend(self, symbol, quantile=.1):
+    def _volume_trend(self, symbol, population=3):
         """
-        https://www.amazon.com/dp/178272009X
-
-        (Chapter 1) The Volume Clock: Insights into the High-Frequency Paradigm
         """
 
         try:
             if self.Toolkit.halt():
                 return
 
-            tmp1 = self._cache[symbol]['history'].copy()
-            tmp2, tmp3 = [0, 0], []
+            def _trend(book):
+                asks, bids = 0, 0
+                for amount in book.values():
+                    if amount > 0:
+                        asks += amount
+                    else:
+                        bids += amount
 
-            tmp1.reverse()
-            for _, a, p in tmp1:
-                v1, p1 = tmp2
-                v2, p2 = abs(a * p), p
-                v = v1 + v2
-                p = (v1 * p1 + v2 * p2) / v
+                V.append(asks - bids)
+                if asks > 0:
+                    return 100 * (abs(bids / asks) - 1)
 
-                if v > quantile:
-                    P, q, r = round(p, 8), int(v / quantile), v % quantile
-                    tmp3 += [P for _ in range(q)]
-                    tmp2 = [r, p]
-                else:
-                    tmp2 = [v, p]
-            tmp3.reverse()
+            tmp, V = [], []
+            while len(tmp) < population:
+                t = _trend(self.Wrapper.book(symbol, 5))
+                if t is not None:
+                    tmp.append(t)
 
-            if len(tmp3) > 50:
-                p_open, p_high, p_low, p_close = tmp3[0], max(tmp3), min(tmp3), tmp3[-1]
-                if p_close < 1E-5:  # getting rid of DOGE etc.
-                    return
-
-                x = 100 * (p_close / p_high - 1)  # always <= 0
-                y = 100 * (p_close / p_low - 1)  # always >= 0
-                z = 100 * (p_close / p_open - 1)  # any
-                return (x + y + z) / 3
-        except:
-            self.log(traceback.format_exc(), self)
-
-    def _volatility(self, symbol):
-        """
-        https://www.investopedia.com/terms/v/volatility.asp
-        """
-
-        try:
-            if self.Toolkit.halt():
-                return
-
-            p_open, p_high, p_low, p_close = self._cache[symbol]['ohlc']
-            tendency = 100 * (p_close / p_open - 1)
-
-            if tendency > 0:
-                return 100 * (p_high / p_low - 1)
-        except:
-            self.log(traceback.format_exc(), self)
-
-    def _nakamoto(self):
-        """
-        https://en.wikipedia.org/wiki/History_of_bitcoin
-        """
-
-        try:
-            if self.Toolkit.halt():
-                return
-
-            nakamoto = 'btc', 'usdt'
-            self._cache[nakamoto] = {}
-
-            self._cache[nakamoto]['book'] = self.Wrapper.book(nakamoto, 5)
-            self._cache[nakamoto]['history'] = self.Wrapper.history(nakamoto, time.time())
-            self._cache[nakamoto]['ohlc'] = self.Wrapper.history(nakamoto)
-
-            if None in self._cache[nakamoto].values():
-                self._cache.pop(nakamoto)
-                self.Toolkit.wait(1 / 3)
-                return self._nakamoto()
-
-            i = self._index(nakamoto)
-            self._cache.pop(nakamoto)
-
-            if i is not None:
-                return i > 0
+            V = sum(V) / max(len(V), 1)
+            return V * sum(tmp) / population
         except:
             self.log(traceback.format_exc(), self)

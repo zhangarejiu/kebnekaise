@@ -75,11 +75,14 @@ class Toolkit(object):
         """
 
         try:
-            modulus = abs(wild)
+            if wild in [0, None]:
+                return 0.
 
-            if wild != 0:
-                return round(abs(math.log(modulus)) * wild / modulus, 8)
-            return 0.
+            mod = abs(wild)
+            side = wild / mod
+            coef = abs(math.log(mod))
+
+            return round(side * coef, 8)
         except:
             self.log(traceback.format_exc())
 
