@@ -30,8 +30,8 @@ class Indicator(object):
 
             self.log('', self)
             self.log('Updating dataset of top symbols...', self)
-            t_delta = time.time()
 
+            t_delta = time.time()
             ratio = len(self._cache) / len(self.Wrapper.symbols())
             tail = str(round(100 * ratio, 3)) + ' % of the symbols in uptrend.'
 
@@ -52,13 +52,10 @@ class Indicator(object):
 
             self.log('', self)
             self.log('Current selection is: ' + str(tmp), self)
-
             t_delta = time.time() - t_delta
-            av_delta = t_delta / max(len(self._cache), 1)
-            stats = round(t_delta, 3), round(av_delta, 5)
 
             self.log('', self)
-            self.log('...calculation done in {0} s, average {1} s/symbol.'.format(*stats), self)
+            self.log('...calculation done in {0} s.'.format(round(t_delta, 3)), self)
             return tmp
         except:
             self.log(traceback.format_exc(), self)
@@ -75,11 +72,14 @@ class Indicator(object):
             self.log('Updating financial indexes DB...', self)
             t_delta = time.time()
 
+            ls = len(self._cache)
             if (t_delta - self._updated) / 60 > 5 * self.Toolkit.Orbit:
+                ls = 0
                 for s in self.Wrapper.symbols():
                     t = self._long_trend(s)
                     if t is not None and t > 0:
                         self._cache[s] = 0.
+                    ls += 1
                 self._updated = t_delta
 
             self.log('', self)
@@ -103,7 +103,7 @@ class Indicator(object):
                         self._cache[s] = 0.
 
             t_delta = time.time() - t_delta
-            av_delta = t_delta / max(len(self._cache), 1)
+            av_delta = t_delta / max(ls, 1)
             stats = round(t_delta, 3), round(av_delta, 5)
 
             self.log('', self)
