@@ -54,7 +54,7 @@ class Indicator(object):
 
             bw = {k: v for k, v in bw.items() if 5 < v < 10}
             bw = dict(sorted(bw.items(), key=lambda k: k[1])[-5:])
-            bw = [bw, {}][len(bw) < 2]
+            bw = [bw, {}][len(bw) < 3]
 
             self.log('', self)
             self.log('Current selection is: ' + str(bw), self)
