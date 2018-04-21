@@ -6,9 +6,7 @@ import time
 import traceback
 
 from calendar import timegm
-from socket import gaierror
 from urllib import parse, request
-from urllib.error import URLError
 
 
 class Wrapper(object):
@@ -25,6 +23,7 @@ class Wrapper(object):
 
         self.Brand, self.Fee = 'bittrex', .25
         self.fmt = '%Y-%m-%dT%H:%M:%S'
+        self._fails = 0
 
         self.Toolkit = toolkit
         self.Key, self.Secret = self.Toolkit.setup(self.Brand)
@@ -34,11 +33,9 @@ class Wrapper(object):
         """
         """
 
-        req = {}
-
         try:
             req = self._request('public/getmarkets', False)
-            assert req['success'] is True
+            assert req['success']
 
             tmp = {d['MarketName'].lower().partition('-')[::-2]
                    for d in req['result'] if d['IsActive']}
@@ -47,18 +44,16 @@ class Wrapper(object):
                 return {s for s in tmp if s[1] == 'btc'}
             return tmp
         except:
-            self._err(traceback.format_exc(), req)
+            self.log(traceback.format_exc(), self)
 
     def book(self, symbol, margin=1):
         """
         """
 
-        req = {}
-
         try:
             params = {'market': '-'.join(symbol[::-1]), 'type': 'both', }
             req = self._request('public/getorderbook?' + parse.urlencode(params), False)
-            assert req['success'] is True
+            assert req['success']
 
             if None not in req['result'].values():
                 asks = {d['Rate']: d['Quantity'] for d in req['result']['sell']}
@@ -74,13 +69,11 @@ class Wrapper(object):
         except KeyError:
             return {}
         except:
-            self._err(traceback.format_exc(), req)
+            self.log(traceback.format_exc(), self)
 
     def history(self, symbol, cutoff=None):
         """
         """
-
-        req = {}
 
         try:
             params = {'market': '-'.join(symbol[::-1]), }
@@ -89,7 +82,7 @@ class Wrapper(object):
                 # last 20 minutes trades history
 
                 req = self._request('public/getmarkethistory?' + parse.urlencode(params), False)
-                assert req['success'] is True
+                assert req['success']
 
                 end = int(cutoff - cutoff % 60)
                 start = end - 1200
@@ -106,7 +99,7 @@ class Wrapper(object):
                 # last 24 hours "OPEN|HIGH|LOW|CLOSE" prices
 
                 req = self._request('public/getmarketsummary?' + parse.urlencode(params), False)
-                assert req['success'] is True
+                assert req['success']
 
                 if req['result'] is not None and len(req['result']) > 0:
                     tmp = req['result'].pop()
@@ -115,17 +108,15 @@ class Wrapper(object):
         except KeyError:
             return []
         except:
-            self._err(traceback.format_exc(), req)
+            self.log(traceback.format_exc(), self)
 
     def balance(self):
         """
         """
 
-        req = {}
-
         try:
             req = self._request(('account/getbalances?', {},))
-            assert req['success'] is True
+            assert req['success']
 
             tmp = {'btc': (0., 0.)}
             for d in req['result']:
@@ -135,13 +126,11 @@ class Wrapper(object):
                     tmp[d['Currency'].lower()] = (available, on_orders)
             return tmp
         except:
-            self._err(traceback.format_exc(), req)
+            self.log(traceback.format_exc(), self)
 
     def fire(self, amount, price, symbol):
         """
         """
-
-        req = {}
 
         try:
             tmp = {'rate': round(price, 8),
@@ -155,22 +144,20 @@ class Wrapper(object):
                 tmp.update({'quantity': -round(amount, 8), })
 
             req = self._request((uri, tmp,))
-            assert req['success'] is True
+            assert req['success']
 
             return req['result']['uuid']
         except:
-            self._err(traceback.format_exc(), req)
+            self.log(traceback.format_exc(), self)
 
     def orders(self, order_id=None, recheck=3):
         """
         """
 
-        req = {}
-
         try:
             if order_id is None:
                 req = self._request(('market/getopenorders?', {},))
-                assert req['success'] is True
+                assert req['success']
 
                 tmp = {
                     d['OrderUuid']: (
@@ -187,19 +174,20 @@ class Wrapper(object):
                     return self.orders(order_id, recheck)
             else:
                 req = self._request(('market/cancel?', {'uuid': order_id, },))
-                assert req['success'] is True
+                assert req['success']
                 tmp = '-' + order_id.upper()
 
             # Delaying a bit, to allow the site to recognize newly created / canceled orders...
             time.sleep(random.randint(5, 9))
             return tmp
         except:
-            self._err(traceback.format_exc(), req)
+            self.log(traceback.format_exc(), self)
 
     def _request(self, req_uri, signing=True):
         """
         """
 
+        calling = locals()
         base_uri = 'https://bittrex.com/api/v1.1/'
 
         try:
@@ -218,26 +206,23 @@ class Wrapper(object):
                 sign = hmac.new(self.Secret, post_data, digestmod=hashlib.sha512).hexdigest()
                 params = {'url': url, 'data': post_data,
                           'headers': {'apisign': sign, }, }
-                return json.loads(request.urlopen(request.Request(**params)).read().decode())
+                tmp = json.loads(request.urlopen(request.Request(**params)).read().decode())
             else:
                 # type(req_uri) == str
-                return json.loads(request.urlopen(base_uri + req_uri).read().decode())
+                tmp = json.loads(request.urlopen(base_uri + req_uri).read().decode())
 
-        except (ConnectionResetError, KeyboardInterrupt, gaierror, URLError):
-            return {'success': False}
+            assert tmp['success']
+            self._fails = 0
+            return tmp
+
         except:
-            self.log(traceback.format_exc(), self)
-            return {'success': False}
+            del calling['self']
 
-    def _err(self, tback, resp):
-        """
-        """
-
-        try:
-            self.log('', self)
-            self.log(tback, self)
-
-            self.log('', self)
-            self.log('Response: ' + str(resp), self)
-        except:
-            self.log(traceback.format_exc(), self)
+            if self._fails < 3:
+                self._fails += 1
+                self.Toolkit.wait(1 / 3)
+                return self._request(**calling)
+            else:
+                self._fails = 0
+                self.log(traceback.format_exc(), self)
+                return {'success': False}

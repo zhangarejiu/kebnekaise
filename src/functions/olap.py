@@ -59,6 +59,11 @@ class Indicator(object):
             self.log('', self)
             self.log('Current selection is: ' + str(bw), self)
 
+            if self._nakamoto():
+                self.log('', self)
+                self.log('But it seems that BTC is in a bullish trend: clearing that selection.', self)
+                bw = {}
+
             t_delta = time.time() - t_delta
             av_delta = t_delta / max(len(self._cache), 1)
             stats = round(t_delta, 3), round(av_delta, 5)
@@ -209,5 +214,32 @@ class Indicator(object):
 
             if tendency > 0:
                 return 100 * (p_high / p_low - 1)
+        except:
+            self.log(traceback.format_exc(), self)
+
+    def _nakamoto(self):
+        """
+        https://en.wikipedia.org/wiki/History_of_bitcoin
+        """
+
+        try:
+            if self.Toolkit.halt():
+                return
+
+            nakamoto = 'btc', 'usdt'
+            self._cache[nakamoto]['book'] = self.Wrapper.book(nakamoto, 1)
+            self._cache[nakamoto]['history'] = self.Wrapper.history(nakamoto, time.time())
+            self._cache[nakamoto]['ohlc'] = self.Wrapper.history(nakamoto)
+
+            if None in self._cache[nakamoto].values():
+                self._cache.pop(nakamoto)
+                self.Toolkit.wait(1 / 3)
+                return self._nakamoto()
+
+            i = self._index(nakamoto)
+            self._cache.pop(nakamoto)
+
+            if i is not None:
+                return i > 0
         except:
             self.log(traceback.format_exc(), self)

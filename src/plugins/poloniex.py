@@ -6,9 +6,7 @@ import time
 import traceback
 
 from calendar import timegm
-from socket import gaierror
 from urllib import parse, request
-from urllib.error import URLError
 
 
 class Wrapper(object):
@@ -24,6 +22,7 @@ class Wrapper(object):
         """
 
         self.Brand, self.Fee = 'poloniex', .25
+        self._fails = 0
 
         self.Toolkit = toolkit
         self.Key, self.Secret = self.Toolkit.setup(self.Brand)
@@ -32,8 +31,6 @@ class Wrapper(object):
     def symbols(self, btc_only=True):
         """
         """
-
-        req = {}
 
         try:
             req = self._request('public?command=returnTicker', False)
@@ -46,13 +43,11 @@ class Wrapper(object):
                 return {s for s in tmp if s[1] == 'btc'}
             return tmp
         except:
-            self._err(traceback.format_exc(), req)
+            self.log(traceback.format_exc(), self)
 
     def book(self, symbol, margin=1):
         """
         """
-
-        req = {}
 
         try:
             req = self._request('public?command=returnOrderBook&currencyPair=' +
@@ -72,13 +67,11 @@ class Wrapper(object):
         except KeyError:
             return {}
         except:
-            self._err(traceback.format_exc(), req)
+            self.log(traceback.format_exc(), self)
 
     def history(self, symbol, cutoff=None):
         """
         """
-
-        req = {}
 
         try:
             if cutoff is not None:
@@ -117,13 +110,11 @@ class Wrapper(object):
         except KeyError:
             return []
         except:
-            self._err(traceback.format_exc(), req)
+            self.log(traceback.format_exc(), self)
 
     def balance(self):
         """
         """
-
-        req = {}
 
         try:
             req = self._request(('tradingApi', {'command': 'returnCompleteBalances'},))
@@ -137,13 +128,11 @@ class Wrapper(object):
                     tmp[key.lower()] = (available, on_orders)
             return tmp
         except:
-            self._err(traceback.format_exc(), req)
+            self.log(traceback.format_exc(), self)
 
     def fire(self, amount, price, symbol):
         """
         """
-
-        req = {}
 
         try:
             tmp = {'rate': round(price, 8),
@@ -159,13 +148,11 @@ class Wrapper(object):
 
             return int(req['orderNumber'])
         except:
-            self._err(traceback.format_exc(), req)
+            self.log(traceback.format_exc(), self)
 
     def orders(self, order_id=None, recheck=3):
         """
         """
-
-        req = {}
 
         try:
             if order_id is None:
@@ -197,12 +184,13 @@ class Wrapper(object):
             time.sleep(random.randint(5, 9))
             return tmp
         except:
-            self._err(traceback.format_exc(), req)
+            self.log(traceback.format_exc(), self)
 
     def _request(self, req_uri, signing=True):
         """
         """
 
+        calling = locals()
         base_uri = 'https://poloniex.com/'
 
         try:
@@ -220,26 +208,22 @@ class Wrapper(object):
                 sign = hmac.new(self.Secret, post_data, digestmod=hashlib.sha512).hexdigest()
                 params = {'url': base_uri + req_uri[0], 'data': post_data,
                           'headers': {'Key': self.Key, 'Sign': sign, }, }
-                return json.loads(request.urlopen(request.Request(**params)).read().decode())
+                tmp = json.loads(request.urlopen(request.Request(**params)).read().decode())
             else:
                 # type(req_uri) == str
-                return json.loads(request.urlopen(base_uri + req_uri).read().decode())
+                tmp = json.loads(request.urlopen(base_uri + req_uri).read().decode())
 
-        except (ConnectionResetError, KeyboardInterrupt, gaierror, URLError):
-            return
+            assert tmp is not None
+            self._fails = 0
+            return tmp
+
         except:
-            self.log(traceback.format_exc(), self)
-            return
+            del calling['self']
 
-    def _err(self, tback, resp):
-        """
-        """
-
-        try:
-            self.log('', self)
-            self.log(tback, self)
-
-            self.log('', self)
-            self.log('Response: ' + str(resp), self)
-        except:
-            self.log(traceback.format_exc(), self)
+            if self._fails < 3:
+                self._fails += 1
+                self.Toolkit.wait(1 / 3)
+                return self._request(**calling)
+            else:
+                self._fails = 0
+                self.log(traceback.format_exc(), self)
