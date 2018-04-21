@@ -23,9 +23,9 @@ def operation(wrapper):
 
         if tlk.setup()['live_mode'].lower() == 'yes':
             #indicator.broadway()
-            trader.probe(False)  # set 'False' here in order to test small amounts!
+            trader.probe()
         else:
-            auditor.test(False)
+            auditor.test()
 
         tlk.log(spacer, wrapper)
         tlk.log('', wrapper)
