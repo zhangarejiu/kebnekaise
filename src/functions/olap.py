@@ -26,32 +26,34 @@ class Indicator(object):
         """
 
         try:
-            self._update(self.Wrapper.symbols())
+            ratio = self._update(self.Wrapper.symbols())
 
             self.log('', self)
             self.log('Selecting top symbols by performance...', self)
             t_delta = time.time()
 
             tmp = {s: i for s, i in self._cache.items() if i > 0}
-            ratio = len(tmp) / len(self._cache)
 
             self.log('', self)
             self.log('Financial indexes are: ' + str(tmp), self)
+
             tmp = dict(sorted(tmp.items(), key=lambda k: k[1])[-5:])
 
             self.log('', self)
             self.log('Preliminary selection is: ' + str(tmp), self)
+
             tail = str(round(100 * ratio, 3)) + ' % of the symbols in uptrend.'
 
+            self.log('', self)
             if ratio > 1 / self.Toolkit.Phi:
                 self.log('Altcoins UP: ' + tail, self)
-                tmp = [tmp, {}][len(tmp) < 3]
             else:
                 self.log('Altcoins DOWN: ' + tail, self)
                 tmp = {}
 
             self.log('', self)
             self.log('Final selection is: ' + str(tmp), self)
+
             t_delta = time.time() - t_delta
 
             self.log('', self)
@@ -73,21 +75,26 @@ class Indicator(object):
             t_delta = time.time()
 
             self._cache = {s: 0. for s in symbols}
+            c, lc = 0, len(self._cache)
+
             for s in self._cache:
                 lt = self.Toolkit.smooth(self._long_trend(s))
                 if lt > 0:
+                    c += 1
                     st = self.Toolkit.smooth(self._short_trend(s, t_delta))
+
                     if st < 0:
                         vt = self.Toolkit.smooth(self._volume_trend(s))
                         if vt > 0:
                             self._cache[s] = round(lt - st + vt, 3)
 
             t_delta = time.time() - t_delta
-            av_delta = t_delta / len(self._cache)
+            av_delta = t_delta / lc
             stats = round(t_delta, 3), round(av_delta, 5)
 
             self.log('', self)
             self.log('...update done in {0} s, average {1} s/symbol.'.format(*stats), self)
+            return c / lc
         except:
             self.log(traceback.format_exc(), self)
 
