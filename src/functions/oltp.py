@@ -54,7 +54,7 @@ class Trader(object):
                 balance, holdings = report
                 if holdings[0] > self.Toolkit.Quota:
                     if len(broadway) > 0:
-                        self._chase(balance, broadway)
+                        self._chase(balance, broadway, True)
                     else:
                         self.log('', self)
                         self.log('No good symbols enough, waiting for better market '
