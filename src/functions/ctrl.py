@@ -85,6 +85,7 @@ class Toolkit(object):
             return round(side * coef, 8)
         except:
             self.log(traceback.format_exc())
+            return 0.
 
     def log(self, message, caller=None):
         """
@@ -283,13 +284,13 @@ class Auditor(object):
             history = self.Wrapper.history(**params)
             self.log('The response was: ' + str(history), self)
 
-            self.log('Now, testing [OHLC] functionality...', self)
+            self.log('Now, testing [OHLCV] functionality...', self)
 
             del params['cutoff']
             self.log('Using the following parameters: ' + str(params), self)
 
-            ohlc = self.Wrapper.history(**params)
-            self.log('The response was: ' + str(ohlc), self)
+            ohlcv = self.Wrapper.history(**params)
+            self.log('The response was: ' + str(ohlcv), self)
         except:
             self.log(traceback.format_exc(), self)
             self._cache['errors'] += 1

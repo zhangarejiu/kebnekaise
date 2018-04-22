@@ -1,7 +1,6 @@
 import hashlib
 import hmac
 import json
-import random
 import time
 import traceback
 
@@ -96,14 +95,14 @@ class Wrapper(object):
                     tmp.reverse()
                     return tmp
             else:
-                # last 24 hours "OPEN|HIGH|LOW|CLOSE" prices
+                # last 24 hours "OPEN|HIGH|LOW|CLOSE|bVOLUME" prices
 
                 req = self._request('public/getmarketsummary?' + parse.urlencode(params), False)
                 assert req['success']
 
                 if req['result'] is not None and len(req['result']) > 0:
                     tmp = req['result'].pop()
-                    return tmp['PrevDay'], tmp['High'], tmp['Low'], tmp['Last']
+                    return tmp['PrevDay'], tmp['High'], tmp['Low'], tmp['Last'], tmp['BaseVolume']
 
         except KeyError:
             return []
@@ -178,7 +177,7 @@ class Wrapper(object):
                 tmp = '-' + order_id.upper()
 
             # Delaying a bit, to allow the site to recognize newly created / canceled orders...
-            time.sleep(random.randint(5, 9))
+            time.sleep(5)
             return tmp
         except:
             self.log(traceback.format_exc(), self)
