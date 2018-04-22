@@ -33,6 +33,7 @@ class Indicator(object):
             t_delta = time.time()
 
             tmp = {s: i for s, i in self._cache.items() if i > 0}
+            ratio = len(tmp) / len(self._cache)
 
             self.log('', self)
             self.log('Financial indexes are: ' + str(tmp), self)
@@ -40,8 +41,6 @@ class Indicator(object):
 
             self.log('', self)
             self.log('Preliminary selection is: ' + str(tmp), self)
-
-            ratio = len(tmp) / len(self._cache)
             tail = str(round(100 * ratio, 3)) + ' % of the symbols in uptrend.'
 
             if ratio > 1 / self.Toolkit.Phi:
