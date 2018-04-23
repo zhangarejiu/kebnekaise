@@ -8,7 +8,7 @@ from .plugins import *          # Appears as unused in PyCharm, but simply ignor
 from .plugins.sandbox import *  # Appears as unused in PyCharm, but simply ignore it.
 
 
-def operation(wrapper):
+def operation(wrapper, olap_only=False):
     """
     A process for each market.
     """
@@ -22,8 +22,12 @@ def operation(wrapper):
         auditor = ctrl.Auditor(trader)
 
         if tlk.setup()['live_mode'].lower() == 'yes':
-            #indicator.broadway()
-            trader.probe()
+            if not olap_only:
+                trader.probe()
+            else:
+                while not tlk.halt():
+                    indicator.broadway()
+                    tlk.wait()
         else:
             auditor.test()
 

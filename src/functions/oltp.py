@@ -54,7 +54,7 @@ class Trader(object):
                 balance, holdings = report
                 if holdings[0] > self.Toolkit.Quota:
                     if len(broadway) > 0:
-                        self._chase(balance, broadway, True)
+                        self._chase(balance, broadway)
                     else:
                         self.log('', self)
                         self.log('No good symbols enough, waiting for better market '
@@ -136,7 +136,7 @@ class Trader(object):
                     self.log('', self)
                     self.log('Canceling order [{0}]...'.format(oid), self)
                     assert self.Wrapper.orders(oid) is not None
-                    self._burn(symbol, -1 * self._quantum, price)
+                    self._burn(symbol, -2 * self._quantum, price)
                 self._last = t_delta
 
             t_delta = round(time.time() - t_delta, 3)
@@ -305,7 +305,7 @@ class Trader(object):
                 if buying[1] in self.Wrapper.orders():
                     self.Wrapper.orders(buying[1])
 
-                selling = self._burn(chosen, -10 * self._quantum, buying[0]['price'])
+                selling = self._burn(chosen, -100 * self._quantum, buying[0]['price'])
 
                 self.log('', self)
                 if selling is None:
