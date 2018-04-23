@@ -23,7 +23,7 @@ class Toolkit(object):
         self.CParser = ConfigParser(allow_no_value=True)
         self.CParser.read(self.Path + '/bin/conf.ini')
         self.Plugins = self._plugins()
-        self.Orbit = 4  # minutes
+        self.Orbit = 3  # minutes
         self.Quota = 1E-3  # bitcoins
 
         self.Phi = (1 + 5 ** .5) / 2  # https://en.wikipedia.org/wiki/Golden_ratio

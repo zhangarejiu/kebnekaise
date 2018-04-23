@@ -56,11 +56,9 @@ class Trader(object):
                     if len(broadway) > 0:
                         self._chase(balance, broadway)
                     else:
-                        self.log('', self)
                         self.log('No good symbols enough, waiting for better market '
                                  + 'conditions...', self)
                 else:
-                    self.log('', self)
                     self.log('Internal error or insufficient funds, sorry...', self)
                     self.Toolkit.wait(3 * self.Toolkit.Orbit)
                 t_delta = round(time.time() - t_delta, 3)
@@ -91,10 +89,9 @@ class Trader(object):
             orders = self.Wrapper.orders()
             assert orders is not None
 
-            self.log('', self)
             self.log('Your currently active orders are: ' + str(orders), self)
-
             engaged = {s[0] for a, p, s in orders.values()}
+
             for currency, (available, _) in balance.items():
                 symbol = currency, 'btc'
 
@@ -107,9 +104,7 @@ class Trader(object):
                         self._burn(symbol, -50 * self._quantum, ticker[0])
 
             t_delta = round(time.time() - t_delta, 3)
-            self.log('', self)
             self.log('...check done in {0} seconds.'.format(t_delta), self)
-
             return orders
         except:
             self.log(traceback.format_exc(), self)
@@ -128,21 +123,17 @@ class Trader(object):
             assert orders is not None
 
             if last_orders != orders:
-                self.log('', self)
                 self.log('Your currently active orders are: ' + str(orders), self)
 
             if t_delta - self._last > 3600:
                 for oid, (amount, price, symbol) in orders.items():
-                    self.log('', self)
                     self.log('Canceling order [{0}]...'.format(oid), self)
                     assert self.Wrapper.orders(oid) is not None
                     self._burn(symbol, -2 * self._quantum, price)
                 self._last = t_delta
 
             t_delta = round(time.time() - t_delta, 3)
-            self.log('', self)
             self.log('...review done in {0} seconds.'.format(t_delta), self)
-
             return orders
         except:
             self.log(traceback.format_exc(), self)
@@ -161,14 +152,12 @@ class Trader(object):
             assert orders is not None
 
             if last_orders != orders:
-                self.log('', self)
                 self.log('Your currently active orders are: ' + str(orders), self)
 
             for oid, (amount, price, symbol) in orders.items():
                 equity = abs(amount) * self._value(symbol[0], 'btc')
 
                 if 0 < equity < (1 - threshold / 100) * self.Toolkit.Quota:
-                    self.log('', self)
                     self.log('Canceling order [{0}]...'.format(oid), self)
                     assert self.Wrapper.orders(oid) is not None
 
@@ -177,7 +166,6 @@ class Trader(object):
                     self._burn(symbol, -30 * self._quantum, ticker[1], False)
 
             t_delta = round(time.time() - t_delta, 3)
-            self.log('', self)
             self.log('...removal done in {0} seconds.'.format(t_delta), self)
             return orders
         except:
@@ -189,11 +177,11 @@ class Trader(object):
         """
 
         try:
+            self.log('', self)
             orders = self.Wrapper.orders()
             assert orders is not None
 
             if last_orders != orders:
-                self.log('', self)
                 self.log('Your currently active orders are: ' + str(orders), self)
 
             balance = self.Wrapper.balance()
@@ -202,7 +190,6 @@ class Trader(object):
             holdings = self._holdings(balance)
             assert holdings is not None
 
-            self.log('', self)
             self.log('Your current BALANCE is: ' + str(balance), self)
             self.log('That\'s equals approximately to BTC {0} (USD {1}).'.format(*holdings), self)
             return balance, holdings
@@ -279,15 +266,12 @@ class Trader(object):
                 self.log('The (randomly) chosen symbol was: ' + str(chosen), self)
 
             if self._first in [0, chosen]:
-                self.log('', self)
                 self.log('But it\'s the first one of this session: nothing to do.', self)
-
                 if self._first == 0:
                     self._first = chosen
                 return
             self._first = None
 
-            self.log('', self)
             if chosen in {s for a, p, s in self.Wrapper.orders().values()}:
                 self.log('But it\'s one of your current assets: nothing to do.', self)
 
@@ -295,19 +279,15 @@ class Trader(object):
                 self.log('But apparently all of your funds are engaged already: nothing to do.', self)
             else:
                 self.log('STARTING TRADE PROCEDURES FOR SYMBOL: ' + str(chosen), self)
-
                 buying = self._burn(chosen, self._quantum, None, False)
                 if buying is None:
                     return
 
                 self.Toolkit.wait(self.Toolkit.Orbit)
-
                 if buying[1] in self.Wrapper.orders():
                     self.Wrapper.orders(buying[1])
 
                 selling = self._burn(chosen, -100 * self._quantum, buying[0]['price'])
-
-                self.log('', self)
                 if selling is None:
                     self.log('Buying in maker-mode for ' + str(chosen) + ' FAILED: sorry.', self)
                     return
@@ -330,6 +310,8 @@ class Trader(object):
         """
 
         try:
+            self.log('', self)
+
             coef = [1 + margin / 100, 1 - margin / 100][maker]
             base, quote = symbol[0], 'btc'
 
@@ -353,7 +335,6 @@ class Trader(object):
             params = {'amount': round(amount, 8), 'price': round(price, 8), 'symbol': symbol, }
             side = ['SELL', 'BUY'][amount > 0]
 
-            self.log('', self)
             self.log('Trying to ' + side + ': ' + str(symbol) + '...', self)
             self.log('Current TICKER is: ' + str(ticker), self)
             self.log('Sending order with parameters: {0}...'.format(params), self)
