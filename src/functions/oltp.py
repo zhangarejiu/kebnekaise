@@ -18,14 +18,14 @@ class Trader(object):
         self.Brand = self.Wrapper.Brand
         self.Toolkit = self.Wrapper.Toolkit
 
-        self._unity = .1 * self.Toolkit.Phi
+        self._quantum = .1
         self._first, self._last = 0, 0
         self._symbols = set()
 
         self.log = self.Toolkit.log
         self.log(self.Toolkit.Greeting, self)
 
-    def probe(self, stop_loss=True):
+    def probe(self, stop_loss=False):
         """
         Detecting some good trading opportunities...
 
@@ -62,7 +62,7 @@ class Trader(object):
                 else:
                     self.log('', self)
                     self.log('Internal error or insufficient funds, sorry...', self)
-                    #self.Toolkit.wait(3 * self.Toolkit.Orbit)
+                    self.Toolkit.wait(3 * self.Toolkit.Orbit)
                 t_delta = round(time.time() - t_delta, 3)
 
                 self.log('', self)
@@ -104,7 +104,7 @@ class Trader(object):
                     if eligible and currency not in engaged:
                         ticker = self.Toolkit.ticker(self.Brand, symbol)
                         assert ticker is not None
-                        self._burn(symbol, -100 * self._unity, ticker[0])
+                        self._burn(symbol, -50 * self._quantum, ticker[0])
 
             t_delta = round(time.time() - t_delta, 3)
             self.log('', self)
@@ -136,7 +136,7 @@ class Trader(object):
                     self.log('', self)
                     self.log('Canceling order [{0}]...'.format(oid), self)
                     assert self.Wrapper.orders(oid) is not None
-                    self._burn(symbol, -1 * self._unity, price)
+                    self._burn(symbol, -1 * self._quantum, price)
                 self._last = t_delta
 
             t_delta = round(time.time() - t_delta, 3)
@@ -174,7 +174,7 @@ class Trader(object):
 
                     ticker = self.Toolkit.ticker(self.Brand, symbol)
                     assert ticker is not None
-                    self._burn(symbol, -30 * self._unity, ticker[1], False)
+                    self._burn(symbol, -30 * self._quantum, ticker[1], False)
 
             t_delta = round(time.time() - t_delta, 3)
             self.log('', self)
@@ -296,13 +296,16 @@ class Trader(object):
             else:
                 self.log('STARTING TRADE PROCEDURES FOR SYMBOL: ' + str(chosen), self)
 
-                buying = self._burn(chosen, self._unity)
-                if buying is None: return
+                buying = self._burn(chosen, self._quantum, None, False)
+                if buying is None:
+                    return
+
                 self.Toolkit.wait(self.Toolkit.Orbit)
 
                 if buying[1] in self.Wrapper.orders():
                     self.Wrapper.orders(buying[1])
-                selling = self._burn(chosen, -10 * self._unity, buying[0]['price'])
+
+                selling = self._burn(chosen, -10 * self._quantum, buying[0]['price'])
 
                 self.log('', self)
                 if selling is None:

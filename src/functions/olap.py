@@ -1,3 +1,4 @@
+import random
 import time
 import traceback
 
@@ -14,7 +15,7 @@ class Indicator(object):
 
         self.Wrapper = wrapper
         self.Brand = self.Wrapper.Brand
-        self._cache, self._updated = {}, 0.
+        self._cache = {}
 
         self.Toolkit = self.Wrapper.Toolkit
         self.log = self.Toolkit.log
@@ -26,12 +27,13 @@ class Indicator(object):
         """
 
         try:
-            ratio = self._update(self.Wrapper.symbols())
+            ratio = self._update(self._targets())
+            if ratio is None: return {}
 
             self.log('', self)
             self.log('Selecting top symbols by performance...', self)
-            t_delta = time.time()
 
+            t_delta = time.time()
             tmp = {s: i for s, i in self._cache.items() if i > 0}
 
             self.log('', self)
@@ -71,30 +73,62 @@ class Indicator(object):
                 return
 
             self.log('', self)
-            self.log('Updating financial indexes for {0} symbols...'.format(len(symbols)), self)
+            self.log('Updating financial indexes for symbols: ' + str(symbols), self)
+            ls = len(symbols)
+
+            self.log('', self)
+            self.log('({0} total)'.format(ls), self)
+
             t_delta = time.time()
-
             self._cache = {s: 0. for s in symbols}
-            c, lc = 0, len(self._cache)
 
+            c = 0
             for s in self._cache:
                 lt = self.Toolkit.smooth(self._long_trend(s))
                 if lt > 0:
                     c += 1
-                    st = self.Toolkit.smooth(self._short_trend(s, t_delta))
+                    st = self.Toolkit.smooth(self._short_trend(s))
 
                     if st < 0:
-                        vt = self.Toolkit.smooth(self._volume_trend(s))
+                        vt = {self._volume_trend(s) for _ in range(5)}
+                        vt.discard(None)
+                        vt.discard(0)
+
+                        vt = self.Toolkit.smooth(sum(vt) / len(vt))
                         if vt > 0:
                             self._cache[s] = round(lt - st + vt, 3)
 
             t_delta = time.time() - t_delta
-            av_delta = t_delta / lc
+            av_delta = t_delta / ls
             stats = round(t_delta, 3), round(av_delta, 5)
 
             self.log('', self)
             self.log('...update done in {0} s, average {1} s/symbol.'.format(*stats), self)
-            return c / lc
+            return c / ls
+        except:
+            self.log(traceback.format_exc(), self)
+
+    def _targets(self):
+        """
+        """
+
+        try:
+            if self.Toolkit.halt():
+                return
+
+            if len(self._cache) > 0:
+                c = set(self._cache)
+                outsiders = set(random.sample(self.Wrapper.symbols() - c, 5))
+                symbols = c | outsiders
+            else:
+                symbols = self.Wrapper.symbols()
+
+            tmp = set()
+            for s in symbols:
+                ohlcv = self.Wrapper.history(s)
+                if ohlcv is not None and ohlcv[4] > 100:
+                    tmp.add(s)
+            return tmp
         except:
             self.log(traceback.format_exc(), self)
 
@@ -107,20 +141,20 @@ class Indicator(object):
                 return
 
             ohlcv = self.Wrapper.history(symbol)
-            assert ohlcv is not None
 
-            p_open, p_high, p_low, p_close, b_volume = ohlcv
-            x = 100 * (p_close / p_high - 1)  # always <= 0
-            y = 100 * (p_close / p_low - 1)  # always >= 0
-            z = 100 * (p_close / p_open - 1)  # any
-            return b_volume * (x + y + z) / 3
+            if ohlcv is not None:
+                p_open, p_high, p_low, p_close = ohlcv[:4]
 
-        except AssertionError:
-            pass
+                x = 100 * (p_close / p_high - 1)  # always <= 0
+                y = 100 * (p_close / p_low - 1)  # always >= 0
+                z = 100 * (p_close / p_open - 1)  # any
+
+                return (x + y + z) / 3
+            return 0.
         except:
             self.log(traceback.format_exc(), self)
 
-    def _short_trend(self, symbol, cutoff):
+    def _short_trend(self, symbol):
         """
         """
 
@@ -128,23 +162,23 @@ class Indicator(object):
             if self.Toolkit.halt():
                 return
 
-            history = self.Wrapper.history(symbol, cutoff)
-            assert history is not None
+            history = self.Wrapper.history(symbol, time.time())
 
-            tmp = [0, 0]
-            for epoch1, amount1, price1 in history:
-                for epoch2, amount2, price2 in history:
-                    if epoch2 > epoch1 and -amount2 >= amount1 > 0:
-                        tmp[0] += 100 * (price2 / price1 - 1)
-                        tmp[1] += 1
-            return tmp[0] / max(tmp[1], 1)
+            if history is not None:
+                tmp = [0, 0]
 
-        except AssertionError:
-            pass
+                for epoch1, amount1, price1 in history:
+                    for epoch2, amount2, price2 in history:
+                        if epoch2 > epoch1 and -amount2 >= amount1 > 0:
+                            tmp[0] += 100 * (price2 / price1 - 1)
+                            tmp[1] += 1
+
+                return tmp[0] / max(tmp[1], 1)
+            return 0.
         except:
             self.log(traceback.format_exc(), self)
 
-    def _volume_trend(self, symbol, population=5):
+    def _volume_trend(self, symbol):
         """
         """
 
@@ -152,23 +186,20 @@ class Indicator(object):
             if self.Toolkit.halt():
                 return
 
-            c, tmp = 0, []
-            while len(tmp) < population or c < 3 * population:
-                book = self.Wrapper.book(symbol)
-                if book is not None:
-                    asks, bids = 0, 0
+            book = self.Wrapper.book(symbol)
 
-                    for price, amount in book.items():
-                        v = price * amount
-                        if amount > 0:
-                            asks += v
-                        else:
-                            bids += v
+            if book is not None:
+                asks, bids = 0, 0
 
-                    if asks > 0:
-                        tmp.append(100 * (abs(bids / asks) - 1))
-                c += 1
+                for price, amount in book.items():
+                    v = price * amount
+                    if amount > 0:
+                        asks += v
+                    else:
+                        bids += v
 
-            return sum(tmp) / population
+                if asks > 0:
+                    return 100 * (abs(bids / asks) - 1)
+            return 0.
         except:
             self.log(traceback.format_exc(), self)
