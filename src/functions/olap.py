@@ -109,8 +109,7 @@ class Indicator(object):
             else:
                 self.log('Updating the current set of target symbols...', self)
                 c = set(self._cache)
-                outsiders = set(random.sample(self.Wrapper.symbols() - c, 10))
-                symbols = c | outsiders
+                symbols = c | set(random.sample(self.Wrapper.symbols() - c, 10))
 
             tmp = []
             for s in symbols:
