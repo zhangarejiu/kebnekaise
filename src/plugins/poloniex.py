@@ -51,7 +51,7 @@ class Wrapper(object):
 
         try:
             req = self._request('public?command=returnOrderBook&currencyPair=' +
-                                '_'.join(symbol[::-1]).upper() + '&depth=99', False)
+                                '_'.join(symbol[::-1]).upper() + '&depth=999', False)
             assert req is not None
 
             asks = {float(p): a for p, a in req['asks']}
