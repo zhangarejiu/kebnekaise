@@ -5,7 +5,7 @@ import time
 import traceback
 
 from urllib import parse, request
-
+from urllib.error import HTTPError
 
 class Wrapper(object):
     """
@@ -215,10 +215,14 @@ class Wrapper(object):
             else:
                 # type(req_uri) == str
                 tmp = json.loads(request.urlopen(base_uri + req_uri).read().decode())
-            assert tmp is not None
 
+            assert tmp is not None
             self._fails = 0
             return tmp
+
+        except HTTPError:
+            self.Toolkit.wait(5 * self.Toolkit.Orbit)
+
         except:
             del calling['self']
 

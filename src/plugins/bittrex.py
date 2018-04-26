@@ -180,10 +180,11 @@ class Wrapper(object):
             else:
                 # type(req_uri) == str
                 tmp = json.loads(request.urlopen(base_uri + req_uri).read().decode())
-            assert tmp['success']
 
+            assert tmp['success']
             self._fails = 0
             return tmp
+
         except:
             del calling['self']
 
