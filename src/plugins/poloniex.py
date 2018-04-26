@@ -189,6 +189,8 @@ class Wrapper(object):
 
         except HTTPError:
             delay = 5 * self.Toolkit.Orbit
+
+            self.log('', self)
             self.log('NET ERROR: trying again in {} minutes...'.format(delay), self)
             self.Toolkit.wait(delay)
 

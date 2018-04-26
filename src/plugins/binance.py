@@ -198,7 +198,7 @@ class Wrapper(object):
 
         try:
             # SECURITY DELAY: in order to NOT get your IP banned!
-            time.sleep(1)
+            time.sleep(3 / 2)
 
             if signing:
                 # type(req_uri) == tuple
@@ -223,6 +223,8 @@ class Wrapper(object):
 
         except HTTPError:
             delay = 5 * self.Toolkit.Orbit
+
+            self.log('', self)
             self.log('NET ERROR: trying again in {} minutes...'.format(delay), self)
             self.Toolkit.wait(delay)
 
