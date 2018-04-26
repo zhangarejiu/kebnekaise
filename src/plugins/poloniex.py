@@ -4,7 +4,6 @@ import json
 import time
 import traceback
 
-from calendar import timegm
 from urllib import parse, request
 
 
@@ -21,7 +20,6 @@ class Wrapper(object):
         """
 
         self.Brand, self.Fee = 'poloniex', .25
-        self.fmt = '%Y-%m-%d %H:%M:%S'
         self._fails = 0
 
         self.Toolkit = toolkit
@@ -45,71 +43,6 @@ class Wrapper(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def book(self, symbol, margin=1):
-        """
-        """
-
-        try:
-            req = self._request('public?command=returnOrderBook&currencyPair=' +
-                                '_'.join(symbol[::-1]).upper() + '&depth=999', False)
-            assert req is not None
-
-            asks = {float(p): a for p, a in req['asks']}
-            bids = {float(p): -a for p, a in req['bids']}
-
-            if len(asks) * len(bids) > 0:
-                h_ask = (1 + margin / 100) * min(asks)
-                l_bid = (1 - margin / 100) * max(bids)
-                tmp = {k: v for k, v in asks.items() if k <= h_ask}
-                tmp.update({k: v for k, v in bids.items() if k >= l_bid})
-                return tmp
-
-        except KeyError:
-            return {}
-        except:
-            self.log(traceback.format_exc(), self)
-
-    def history(self, symbol, cutoff=None):
-        """
-        """
-
-        try:
-            if cutoff is not None:
-                # last 30 minutes trades history
-
-                end = int(cutoff - cutoff % (60 * self.Toolkit.Orbit))
-                start = end - 1800
-                params = '_'.join(symbol[::-1]).upper(), start, end
-                req = self._request('public?command=returnTradeHistory&currencyPair='
-                                    + '{0}&start={1}&end={2}'.format(*params), False)
-                assert req is not None
-
-                tmp = [(timegm(time.strptime(d['date'], self.fmt)),
-                        [-1, 1][d['type'] == 'buy'] * float(d['amount']),
-                        float(d['rate'])) for d in req]
-                tmp = [(epoch, amount, price,) for epoch, amount, price in tmp
-                       if start < epoch <= end]
-                tmp.reverse()
-                return tmp
-            else:
-                # last 24 hours "OPEN|HIGH|LOW|CLOSE|bVOLUME" prices
-
-                now = int(time.time())
-                end = now - now % (60 * self.Toolkit.Orbit)
-                start = end - 86400
-                params = '_'.join(symbol[::-1]).upper(), start, end
-                req = self._request('public?command=returnChartData&currencyPair='
-                                    + '{0}&start={1}&end={2}&period=7200'.format(*params), False)
-                assert req is not None
-
-                tmp = list(zip(*[(d['open'], d['high'], d['low'], d['close'], d['volume'],) for d in req]))
-                return tmp[0][0], max(tmp[1]), min(tmp[2]), tmp[3][-1], sum(tmp[4])
-
-        except KeyError:
-            return []
-        except:
-            self.log(traceback.format_exc(), self)
-
     def balance(self):
         """
         """
@@ -125,6 +58,47 @@ class Wrapper(object):
                 if available + on_orders > 0:
                     tmp[key.lower()] = (available, on_orders)
             return tmp
+        except:
+            self.log(traceback.format_exc(), self)
+
+    def ticker24h(self, symbol):
+        """
+        """
+
+        try:
+            now = int(time.time())
+            params = '_'.join(symbol[::-1]).upper(), now - 86400, now
+            req = self._request('public?command=returnChartData&currencyPair='
+                                + '{0}&start={1}&end={2}&period=7200'.format(*params), False)
+            assert req is not None
+
+            tmp = [(d['open'], d['high'], d['low'], d['close'], d['volume']) for d in req]
+            tmp = list(zip(*tmp))
+            return tmp[0][0], max(tmp[1]), min(tmp[2]), tmp[3][-1], sum(tmp[4])
+        except:
+            self.log(traceback.format_exc(), self)
+
+    def book(self, symbol, margin=1):
+        """
+        """
+
+        try:
+            req = self._request('public?command=returnOrderBook&currencyPair=' +
+                                '_'.join(symbol[::-1]).upper() + '&depth=100', False)
+            assert req is not None
+
+            asks = {float(p): a for p, a in req['asks']}
+            bids = {float(p): -a for p, a in req['bids']}
+
+            if len(asks) * len(bids) > 0:
+                h_ask = (1 + margin / 100) * min(asks)
+                l_bid = (1 - margin / 100) * max(bids)
+                tmp = {k: v for k, v in asks.items() if k <= h_ask}
+                tmp.update({k: v for k, v in bids.items() if k >= l_bid})
+                return tmp
+
+        except KeyError:
+            return {}
         except:
             self.log(traceback.format_exc(), self)
 
@@ -207,11 +181,10 @@ class Wrapper(object):
             else:
                 # type(req_uri) == str
                 tmp = json.loads(request.urlopen(base_uri + req_uri).read().decode())
-
             assert tmp is not None
+
             self._fails = 0
             return tmp
-
         except:
             del calling['self']
 

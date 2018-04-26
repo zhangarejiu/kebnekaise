@@ -69,7 +69,7 @@ class Toolkit(object):
         except:
             self.log(traceback.format_exc())
 
-    def smooth(self, wild):
+    def smooth(self, wild, rounding=8):
         """
         Just taming wild numbers.
         """
@@ -82,7 +82,7 @@ class Toolkit(object):
             side = wild / mod
             coef = abs(math.log(mod))
 
-            return round(side * coef, 8)
+            return round(side * coef, rounding)
         except:
             self.log(traceback.format_exc())
             return 0.
@@ -204,7 +204,7 @@ class Auditor(object):
         self.log = self.Toolkit.log
         self.log(self.Toolkit.Greeting, self)
 
-    def test(self, fire_mode=False):
+    def test(self, fire_mode=True):
         """
         For each plugin, this will test all the functions on it.
         """
@@ -213,8 +213,8 @@ class Auditor(object):
             self.log('', self)
             self.log('Starting test of the \'{0}\' API wrapper...'.format(self.Brand.upper()), self)
 
-            quiz = [self._symbols, self._book, self._history, self._balance, self._buy,
-                    self._sell, self._orders, self._cancel]
+            quiz = [self._symbols, self._balance, self._ticker24h, self._book,
+                    self._buy, self._orders, self._cancel, self._sell]
 
             for func in quiz[:[4, None][fire_mode]]:
                 if self._cache['errors'] == 0 and not self.Toolkit.halt():
@@ -252,49 +252,6 @@ class Auditor(object):
             self.log(traceback.format_exc(), self)
             self._cache['errors'] += 1
 
-    def _book(self):
-        """
-        Self explanatory...
-        """
-
-        try:
-            self.log('Testing [BOOK] functionality...', self)
-
-            params = {'symbol': self._cache['symbols'][0],
-                      'margin': round(self.Toolkit.Phi, 8), }
-            self.log('Using the following parameters: ' + str(params), self)
-
-            book = self.Wrapper.book(**params)
-            self.log('The response was: ' + str(book), self)
-        except:
-            self.log(traceback.format_exc(), self)
-            self._cache['errors'] += 1
-
-    def _history(self):
-        """
-        Self explanatory...
-        """
-
-        try:
-            self.log('Testing [HISTORY] functionality...', self)
-
-            params = {'symbol': self._cache['symbols'][1], 'cutoff': int(time.time())}
-            self.log('Using the following parameters: ' + str(params), self)
-
-            history = self.Wrapper.history(**params)
-            self.log('The response was: ' + str(history), self)
-
-            self.log('Now, testing [OHLCV] functionality...', self)
-
-            del params['cutoff']
-            self.log('Using the following parameters: ' + str(params), self)
-
-            ohlcv = self.Wrapper.history(**params)
-            self.log('The response was: ' + str(ohlcv), self)
-        except:
-            self.log(traceback.format_exc(), self)
-            self._cache['errors'] += 1
-
     def _balance(self):
         """
         Self explanatory...
@@ -315,6 +272,41 @@ class Auditor(object):
             self.log(traceback.format_exc(), self)
             self._cache['errors'] += 1
 
+    def _ticker24h(self):
+        """
+        Self explanatory...
+        """
+
+        try:
+            self.log('Testing [TICKER24H] functionality...', self)
+
+            params = {'symbol': self._cache['symbols'][0]}
+            self.log('Using the following parameters: ' + str(params), self)
+
+            ticker24h = self.Wrapper.ticker24h(**params)
+            self.log('The response was: ' + str(ticker24h), self)
+        except:
+            self.log(traceback.format_exc(), self)
+            self._cache['errors'] += 1
+
+    def _book(self):
+        """
+        Self explanatory...
+        """
+
+        try:
+            self.log('Testing [BOOK] functionality...', self)
+
+            params = {'symbol': self._cache['symbols'][1],
+                      'margin': round(self.Toolkit.Phi, 8), }
+            self.log('Using the following parameters: ' + str(params), self)
+
+            book = self.Wrapper.book(**params)
+            self.log('The response was: ' + str(book), self)
+        except:
+            self.log(traceback.format_exc(), self)
+            self._cache['errors'] += 1
+
     def _buy(self):
         """
         Self explanatory...
@@ -324,8 +316,10 @@ class Auditor(object):
             self.log('Testing [FIRE] functionality in [BUY] mode...', self)
 
             params = {'symbol': self._cache['symbols'][2]}
-            price = .97 * self.Toolkit.ticker(self.Brand, params['symbol'])[1]  # h_bid
-            amount = (1 - self.Wrapper.Fee / 100) * self.Toolkit.Quota / price
+            l_ask, h_bid = self.Toolkit.ticker(self.Brand, params['symbol'])
+
+            price = .95 * h_bid
+            amount = self.Toolkit.Quota / price
             params.update({'amount': round(amount, 8), 'price': round(price, 8), })
 
             self.log('Putting a BUY order with parameters: ' + str(params), self)
@@ -336,31 +330,6 @@ class Auditor(object):
                 self.log('The response was: ' + str(oid), self)
             else:
                 self.log('Internal error or insufficient funds to make BUY tests...', self)
-        except:
-            self.log(traceback.format_exc(), self)
-            self._cache['errors'] += 1
-
-    def _sell(self):
-        """
-        Self explanatory...
-        """
-
-        try:
-            self.log('Testing [FIRE] functionality in [SELL] mode...', self)
-
-            params = {'symbol': ('btc', 'usdt')}
-            price = 1.03 * self.Toolkit.ticker(self.Brand, params['symbol'])[0]  # l_ask
-            amount = -1 * self.Toolkit.Quota
-            params.update({'amount': round(amount, 8), 'price': round(price, 8), })
-
-            self.log('Putting a SELL order with parameters: ' + str(params), self)
-            oid = self.Wrapper.fire(**params)
-
-            if oid != 0:
-                self._cache['orders'].append(oid)
-                self.log('The response was: ' + str(oid), self)
-            else:
-                self.log('Internal error or insufficient funds to make SELL tests...', self)
         except:
             self.log(traceback.format_exc(), self)
             self._cache['errors'] += 1
@@ -389,13 +358,48 @@ class Auditor(object):
 
             for oid in self._cache['orders']:
                 params = {'order_id': oid}
-
-                self.log('', self)
                 self.log('Using the following parameters: ' + str(params), self)
                 self.log('The response was: ' + str(self.Wrapper.orders(**params)), self)
 
-            orders = list(self.Wrapper.orders())
+            orders = list(self.Wrapper.orders(recheck=0).items())
             self.log('(Current open orders are: {0})'.format(orders), self)
+        except:
+            self.log(traceback.format_exc(), self)
+            self._cache['errors'] += 1
+
+    def _sell(self):
+        """
+        Self explanatory...
+        """
+
+        try:
+            self.log('Testing [FIRE] functionality in [SELL] mode...', self)
+
+            params = {'symbol': ('btc', 'usdt')}
+            l_ask, h_bid = self.Toolkit.ticker(self.Brand, params['symbol'])
+
+            price = 1.05 * l_ask
+            amount = -1 * self.Toolkit.Quota
+            params.update({'amount': round(amount, 8), 'price': round(price, 8), })
+
+            self.log('Putting a SELL order with parameters: ' + str(params), self)
+            oid = self.Wrapper.fire(**params)
+
+            if oid != 0:
+                self._cache['orders'].append(oid)
+                self.log('The response was: ' + str(oid), self)
+
+                orders = list(self.Wrapper.orders(recheck=0).items())
+                self.log('(Current open orders are: {})'.format(orders), self)
+
+                self.log('', self)
+                self.log('Canceling order # {}...'.format(oid), self)
+                self.Wrapper.orders(oid)
+            else:
+                self.log('Internal error or insufficient funds to make SELL tests...', self)
+
+            orders = list(self.Wrapper.orders(recheck=0).items())
+            self.log('(Current open orders are: {})'.format(orders), self)
         except:
             self.log(traceback.format_exc(), self)
             self._cache['errors'] += 1

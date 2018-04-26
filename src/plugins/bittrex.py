@@ -4,7 +4,6 @@ import json
 import time
 import traceback
 
-from calendar import timegm
 from urllib import parse, request
 
 
@@ -21,7 +20,6 @@ class Wrapper(object):
         """
 
         self.Brand, self.Fee = 'bittrex', .25
-        self.fmt = '%Y-%m-%dT%H:%M:%S'
         self._fails = 0
 
         self.Toolkit = toolkit
@@ -42,6 +40,39 @@ class Wrapper(object):
             if btc_only:
                 return {s for s in tmp if s[1] == 'btc'}
             return tmp
+        except:
+            self.log(traceback.format_exc(), self)
+
+    def balance(self):
+        """
+        """
+
+        try:
+            req = self._request(('account/getbalances?', {},))
+            assert req['success']
+
+            tmp = {'btc': (0., 0.)}
+            for d in req['result']:
+                available = d['Available']
+                on_orders = d['Balance'] - d['Available']
+                if available + on_orders > 0:
+                    tmp[d['Currency'].lower()] = (available, on_orders)
+            return tmp
+        except:
+            self.log(traceback.format_exc(), self)
+
+    def ticker24h(self, symbol):
+        """
+        """
+
+        try:
+            params = {'market': '-'.join(symbol[::-1]), }
+            req = self._request('public/getmarketsummary?' + parse.urlencode(params), False)
+            assert req['success']
+
+            if req['result'] is not None and len(req['result']) > 0:
+                tmp = req['result'].pop()
+                return tmp['PrevDay'], tmp['High'], tmp['Low'], tmp['Last'], tmp['BaseVolume']
         except:
             self.log(traceback.format_exc(), self)
 
@@ -67,63 +98,6 @@ class Wrapper(object):
 
         except KeyError:
             return {}
-        except:
-            self.log(traceback.format_exc(), self)
-
-    def history(self, symbol, cutoff=None):
-        """
-        """
-
-        try:
-            params = {'market': '-'.join(symbol[::-1]), }
-
-            if cutoff is not None:
-                # last 30 minutes trades history
-
-                req = self._request('public/getmarkethistory?' + parse.urlencode(params), False)
-                assert req['success']
-
-                end = int(cutoff - cutoff % (60 * self.Toolkit.Orbit))
-                start = end - 1800
-
-                if req['result'] is not None:
-                    tmp = [(timegm(time.strptime(d['TimeStamp'][:19], self.fmt)),
-                            [-1, 1][d['OrderType'] == 'BUY'] * d['Quantity'],
-                            d['Price']) for d in req['result']]
-                    tmp = [(epoch, amount, price,) for epoch, amount, price in tmp
-                           if start < epoch <= end]
-                    tmp.reverse()
-                    return tmp
-            else:
-                # last 24 hours "OPEN|HIGH|LOW|CLOSE|bVOLUME" prices
-
-                req = self._request('public/getmarketsummary?' + parse.urlencode(params), False)
-                assert req['success']
-
-                if req['result'] is not None and len(req['result']) > 0:
-                    tmp = req['result'].pop()
-                    return tmp['PrevDay'], tmp['High'], tmp['Low'], tmp['Last'], tmp['BaseVolume']
-
-        except KeyError:
-            return []
-        except:
-            self.log(traceback.format_exc(), self)
-
-    def balance(self):
-        """
-        """
-
-        try:
-            req = self._request(('account/getbalances?', {},))
-            assert req['success']
-
-            tmp = {'btc': (0., 0.)}
-            for d in req['result']:
-                available = d['Available']
-                on_orders = d['Balance'] - d['Available']
-                if available + on_orders > 0:
-                    tmp[d['Currency'].lower()] = (available, on_orders)
-            return tmp
         except:
             self.log(traceback.format_exc(), self)
 
@@ -206,11 +180,10 @@ class Wrapper(object):
             else:
                 # type(req_uri) == str
                 tmp = json.loads(request.urlopen(base_uri + req_uri).read().decode())
-
             assert tmp['success']
+
             self._fails = 0
             return tmp
-
         except:
             del calling['self']
 

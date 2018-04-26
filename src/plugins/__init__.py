@@ -1,3 +1,3 @@
-__all__ = ['poloniex', 'bittrex', ]
+__all__ = ['binance', 'bittrex', 'poloniex', ]
 
 __author__ = 'developer@kebnekaise.io'

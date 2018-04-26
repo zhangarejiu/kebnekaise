@@ -60,7 +60,7 @@ class Trader(object):
                                  + 'conditions...', self)
                 else:
                     self.log('Internal error or insufficient funds, sorry...', self)
-                    self.Toolkit.wait(3 * self.Toolkit.Orbit)
+                    #self.Toolkit.wait(3 * self.Toolkit.Orbit)
                 t_delta = round(time.time() - t_delta, 3)
 
                 self.log('', self)
@@ -96,7 +96,7 @@ class Trader(object):
                 symbol = currency, 'btc'
 
                 if symbol in self._symbols:
-                    eligible = available * self._value(*symbol) > self.Toolkit.Quota / 2
+                    eligible = available * self._value(*symbol) > self.Toolkit.Quota / self.Toolkit.Phi
 
                     if eligible and currency not in engaged:
                         ticker = self.Toolkit.ticker(self.Brand, symbol)
@@ -287,7 +287,7 @@ class Trader(object):
                 if buying[1] in self.Wrapper.orders():
                     self.Wrapper.orders(buying[1])
 
-                selling = self._burn(chosen, -100 * self._quantum, buying[0]['price'])
+                selling = self._burn(chosen, -50 * self._quantum, buying[0]['price'])
                 if selling is None:
                     self.log('Buying in maker-mode for ' + str(chosen) + ' FAILED: sorry.', self)
                     return

@@ -35,14 +35,11 @@ class Indicator(object):
             self.log('Selecting top symbols by performance...', self)
             t_delta = time.time()
 
-            tmp = {s: i for s, i in self._cache.items() if i > 0}
-            self.log('Financial indexes are: ' + str(tmp), self)
-
-            tmp = dict(sorted(tmp.items(), key=lambda k: k[1])[-5:])
+            tail = str(round(100 * ratio, 3)) + ' % of the symbols in downtrend.'
+            tmp = dict(sorted(self._cache.items(), key=lambda k: k[1])[-5:])
             self.log('Preliminary selection is: ' + str(tmp), self)
 
-            tail = str(round(100 * ratio, 2)) + ' % of the symbols in downtrend.'
-            if ratio > 1 / self.Toolkit.Phi:
+            if ratio > 1 - (1 / self.Toolkit.Phi) ** 3:  # ~ 0.76393202
                 self.log('ENTERING the market: ' + tail, self)
             else:
                 self.log('LEAVING the market: ' + tail, self)
@@ -57,7 +54,7 @@ class Indicator(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def _update(self, symbols, tests=3):
+    def _update(self, symbols, threshold=5):
         """
         """
 
@@ -65,78 +62,45 @@ class Indicator(object):
             if self.Toolkit.halt():
                 return 0.
 
-            self._cache = {s: [0., 0.] for s in symbols}
-            lc = len(self._cache)
+            tmp = {}
+            cheap, valid = 0, 0
+            ls = len(symbols)
 
             self.log('', self)
-            self.log('Updating financial indexes for this {0} symbols: {1}'.format(lc, symbols), self)
+            self.log('Updating financial indexes for this {0} symbols: {1}'.format(ls, symbols), self)
             t_delta = time.time()
 
-            c = 0
-            for s in self._cache:
-                lt = self._long_trend(s)
-                if lt is not None and lt < 0:
-                    c += 1
-                    st = self._short_trend(s, t_delta)
-                    if st is not None and st > 0:
-                        self._cache[s] = lt, st
-
-            tmp = {s: [] for s in self._cache}
-            for _ in range(tests):
-                for s in self._cache:
-                    tmp[s] += [self._volume_trend(s)]
-
-            tmp = {k: sum(v) / tests for k, v in tmp.items()}
-            self._cache = {s: self.Toolkit.smooth(tmp[s] * st * -lt)
-                           for s, (lt, st) in self._cache.items() if tmp[s] > 0}
-
-            t_delta = time.time() - t_delta
-            av_delta = t_delta / lc
-            tt = round(t_delta, 3), round(av_delta, 5)
-
-            self.log('...update done in {0} s, average {1} s/symbol.'.format(*tt), self)
-            return c / lc
-        except:
-            self.log(traceback.format_exc(), self)
-
-    def _targets(self, limit=29):
-        """
-        """
-
-        try:
-            if self.Toolkit.halt():
-                return 0.
-
-            self.log('', self)
-            t_delta = time.time()
-
-            if len(self._cache) == 0:
-                self.log('Defining the initial set of target symbols...', self)
-                symbols = self.Wrapper.symbols()
-            else:
-                self.log('Updating the current set of target symbols...', self)
-                c, ri = set(self._cache), random.randint(7, 11)
-                symbols = c | set(random.sample(self.Wrapper.symbols() - c, ri))
-
-            tmp = []
             for s in symbols:
-                ohlcv = self.Wrapper.history(s)
-                if ohlcv is not None:
-                    last_price, base_volume = ohlcv[-2:]
-                    if base_volume > 100 and last_price > 1E-5:
-                        tmp += [(base_volume, s)]
-            tmp = set(list(zip(*sorted(tmp)[-limit:]))[1])
+                t = self._trend(s)
+                if t not in [0, None]:
+                    valid += 1
+                    if t < 0:
+                        cheap += 1
+                        m = self._momentum(s)
+                        if m is not None and m > 0:
+
+                            i = self.Toolkit.smooth(-t * m)
+                            if i is not None and i > threshold:
+                                tmp[s] = i
+                                if s in self._cache:
+                                    tmp[s] = (self._cache[s] + tmp[s]) / 2
+            self._cache = {s: round(i, 3) for s, i in tmp.items()}
 
             t_delta = time.time() - t_delta
-            av_delta = t_delta / len(symbols)
+            av_delta = t_delta / ls
             tt = round(t_delta, 3), round(av_delta, 5)
 
-            self.log('...targeting done in {0} s, average {1} s/symbol.'.format(*tt), self)
-            return tmp
+            self.log('', self)
+            self.log('Financial indexes are: ' + str(self._cache), self)
+            self.log('...update done in {0} s, average {1} s/symbol.'.format(*tt), self)
+
+            if valid > 0:
+                return cheap / valid
+            return valid
         except:
             self.log(traceback.format_exc(), self)
 
-    def _long_trend(self, symbol, relative=True):
+    def _targets(self, k_limit=30):
         """
         """
 
@@ -144,20 +108,20 @@ class Indicator(object):
             if self.Toolkit.halt():
                 return 0.
 
-            ohlcv = self.Wrapper.history(symbol)
-            if ohlcv is not None:
-                p_open, p_high, p_low, p_close = ohlcv[:4]
-                x = 100 * (p_close / p_high - 1)  # always <= 0
-                y = 100 * (p_close / p_low - 1)  # always >= 0
-                z = 100 * (p_close / p_open - 1)  # any
-                if relative:
-                    return .25 * x + .25 * y + .5 * z
-                return z
-            return 0.
+            inside = set(self._cache)
+            outside = self.Wrapper.symbols() - inside
+
+            if len(inside) > 0:
+                k = min(len(outside), k_limit)
+                candidates = set(random.sample(outside, k))
+            else:
+                candidates = outside
+
+            return inside | candidates
         except:
             self.log(traceback.format_exc(), self)
 
-    def _short_trend(self, symbol, cutoff):
+    def _momentum(self, symbol):
         """
         """
 
@@ -165,38 +129,41 @@ class Indicator(object):
             if self.Toolkit.halt():
                 return 0.
 
-            history = self.Wrapper.history(symbol, cutoff)
-            if history is not None:
-                tmp = [0, 0]
-                for epoch1, amount1, price1 in history:
-                    for epoch2, amount2, price2 in history:
-                        if epoch2 > epoch1 and -amount2 >= amount1 > 0:
-                            tmp[0] += 100 * (price2 / price1 - 1)
-                            tmp[1] += 1
-                return tmp[0] / max(tmp[1], 1)
-            return 0.
-        except:
-            self.log(traceback.format_exc(), self)
+            asks, bids = 0., 0.
+            book = self.Wrapper.book(symbol, 5)
 
-    def _volume_trend(self, symbol, range=7):
-        """
-        """
-
-        try:
-            if self.Toolkit.halt():
-                return 0.
-
-            book = self.Wrapper.book(symbol, range)
             if book is not None:
-                asks, bids = 0, 0
                 for price, amount in book.items():
-                    v = price * amount
+                    notional = price * amount
                     if amount > 0:
-                        asks += v
+                        asks += notional
                     else:
-                        bids += v
-                if asks > 0:
-                    return 100 * (abs(bids / asks) - 1)
+                        bids += notional
+
+            if asks > 0:
+                return 100 * (abs(bids / asks) - 1)
             return 0.
+        except:
+            self.log(traceback.format_exc(), self)
+
+    def _trend(self, symbol):
+        """
+        """
+
+        try:
+            if self.Toolkit.halt():
+                return 0.
+
+            x, y, z = 0., 0., 0.
+            t24h = self.Wrapper.ticker24h(symbol)
+
+            if t24h is not None:
+                _open, _high, _low, _close, _volume = t24h
+                if _volume > 100 and _close > 1E-5:
+                    x = 100 * (_close / _high - 1)  # always <= 0
+                    y = 100 * (_close / _low - 1)  # always >= 0
+                    z = 100 * (_close / _open - 1)  # any
+
+            return .25 * x + .25 * y + .5 * z
         except:
             self.log(traceback.format_exc(), self)
