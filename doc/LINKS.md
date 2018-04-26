@@ -24,16 +24,16 @@
 	https://bitfalls.com/2018/01/12/anatomy-pump-dump-group/
 
 ##### GOLD EXCHANGES (Pretty liquid market, 30+ symbols for BTC, tested and approved API: I love it!):
+    https://bittrex.com     
     https://poloniex.com
-    https://bittrex.com
-
+    https://www.binance.com   
+    
 ##### MANUAL EXCHANGES (They have some cute features that I need, but technically are not suitable for algotrading):
     https://www.bitstamp.net
     https://www.mercadobitcoin.com.br
     https://bitcointrade.com.br
 
 ##### UNKNOWN EXCHANGES (Seems like interesting, but I have not tested/implemented them yet: see 'src/plugins/sandbox/'):
-    https://www.binance.com
     https://www.livecoin.net
 
 ##### DOGSHIT EXCHANGES (Dangerous, suspicious rules or practices, serious problems found: AVOID them or LOSE your money!):
