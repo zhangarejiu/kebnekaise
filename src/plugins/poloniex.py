@@ -5,6 +5,7 @@ import time
 import traceback
 
 from urllib import parse, request
+from urllib.error import HTTPError
 
 
 class Wrapper(object):
@@ -185,6 +186,11 @@ class Wrapper(object):
             assert tmp is not None
             self._fails = 0
             return tmp
+
+        except HTTPError:
+            delay = 5 * self.Toolkit.Orbit
+            self.log('NET ERROR: trying again in {} minutes...'.format(delay), self)
+            self.Toolkit.wait(delay)
 
         except:
             del calling['self']
