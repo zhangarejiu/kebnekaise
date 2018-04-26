@@ -100,7 +100,7 @@ class Indicator(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def _targets(self, k_limit=30):
+    def _targets(self):
         """
         """
 
@@ -112,12 +112,11 @@ class Indicator(object):
             outside = self.Wrapper.symbols() - inside
 
             if len(inside) > 0:
-                k = min(len(outside), k_limit)
-                candidates = set(random.sample(outside, k))
+                k = min(len(outside), 30)
             else:
-                candidates = outside
+                k = len(outside) / 2
 
-            return inside | candidates
+            return inside | set(random.sample(outside, k))
         except:
             self.log(traceback.format_exc(), self)
 
