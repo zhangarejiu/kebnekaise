@@ -114,7 +114,7 @@ class Indicator(object):
             if len(inside) > 0:
                 k = min(len(outside), 30)
             else:
-                k = len(outside) / 2
+                k = round(len(outside) / 2)
 
             return inside | set(random.sample(outside, k))
         except:
