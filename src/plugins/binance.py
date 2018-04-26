@@ -7,6 +7,7 @@ import traceback
 from urllib import parse, request
 from urllib.error import HTTPError
 
+
 class Wrapper(object):
     """
     Reference:
