@@ -20,7 +20,7 @@ class Indicator(object):
         self.log = self.Toolkit.log
         self.log(self.Toolkit.Greeting, self)
 
-    def broadway(self):
+    def broadway(self, bsize=5):
         """
         https://www.pokernews.com/pokerterms/broadway.htm
         """
@@ -34,12 +34,10 @@ class Indicator(object):
             bw = {s: round(i, 3) for s, i in self._cache.items() if i > 0}
             self.log('Financial indexes are: ' + str(bw), self)
 
-            bw = dict(sorted(bw.items(), key=lambda k: k[1])[-5:])
+            bw = dict(sorted(bw.items(), key=lambda k: k[1])[-bsize:])
             self.log('Preliminary selection is: ' + str(bw), self)
 
-            bw = {s: i for s, i in bw.items() if i > 7}
-            bw = [bw, {}][len(bw) < 5]
-
+            bw = [bw, {}][sum(bw.values()) / bsize < 7 or len(bw) < 4]
             self.log('Final selection is: ' + str(bw), self)
             return bw
         except:
