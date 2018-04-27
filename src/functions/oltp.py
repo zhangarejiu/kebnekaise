@@ -192,6 +192,9 @@ class Trader(object):
             l_ask, h_bid = ticker
             price = (1 + margin / 100) * l_ask
             amount = self.Toolkit.Quota / price
+
+            if self.Toolkit.Quota < balance[quote][0] <= 2 * self.Toolkit.Quota:
+                amount = balance[quote][0] / price
             params = {'amount': round(amount, 8), 'price': round(price, 8), 'symbol': symbol, }
 
             self.log('', self)
@@ -200,7 +203,6 @@ class Trader(object):
 
             assert self.Wrapper.fire(**params) is not None
             return price
-
         except AssertionError:
             return 0.
         except:
@@ -235,7 +237,6 @@ class Trader(object):
 
             assert self.Wrapper.fire(**params) is not None
             return 100 * (price / referential - 1)
-
         except AssertionError:
             return 0.
         except:
