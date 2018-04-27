@@ -1,11 +1,11 @@
 import hashlib
 import hmac
 import json
+import random
 import time
 import traceback
 
 from urllib import parse, request
-from urllib.error import HTTPError
 
 
 class Wrapper(object):
@@ -21,8 +21,6 @@ class Wrapper(object):
         """
 
         self.Brand, self.Fee = 'bittrex', .25
-        self._fails = 0
-
         self.Toolkit = toolkit
         self.Key, self.Secret = self.Toolkit.setup(self.Brand)
         self.log = self.Toolkit.log
@@ -124,12 +122,17 @@ class Wrapper(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def orders(self, order_id=None, recheck=3):
+    def orders(self, order_id=None):
         """
+        Some delays are introduced here (with 'time.sleep(delay)') in order to
+        allow the site recognize newly created / canceled orders...
         """
 
         try:
+            delay = 7
+
             if order_id is None:
+                time.sleep(delay)
                 req = self._request(('market/getopenorders?', {},))
                 assert req['success']
 
@@ -141,23 +144,16 @@ class Wrapper(object):
                     )
                     for d in req['result']
                 }
-
-                if len(tmp) == 0 < recheck:
-                    time.sleep(3)
-                    recheck -= 1
-                    return self.orders(order_id, recheck)
             else:
                 req = self._request(('market/cancel?', {'uuid': order_id, },))
                 assert req['success']
                 tmp = '-' + order_id.upper()
-
-            # Delaying a bit, to allow the site to recognize newly created / canceled orders...
-            time.sleep(5)
+                time.sleep(delay)
             return tmp
         except:
             self.log(traceback.format_exc(), self)
 
-    def _request(self, req_uri, signing=True):
+    def _request(self, req_uri, signing=True, debug=False, retry=3):
         """
         """
 
@@ -165,6 +161,10 @@ class Wrapper(object):
         base_uri = 'https://bittrex.com/api/v1.1/'
 
         try:
+            if debug:
+                self.log('', self)
+                self.log('_request(self, req_uri, signing, debug): ' + str(calling), self)
+
             # SECURITY DELAY: in order to NOT get your IP banned!
             time.sleep(1 / 3)
 
@@ -183,24 +183,15 @@ class Wrapper(object):
                 tmp = json.loads(request.urlopen(base_uri + req_uri).read().decode())
 
             assert tmp['success']
-            self._fails = 0
             return tmp
-
-        except HTTPError:
-            delay = 2 * self.Toolkit.Orbit
-
-            self.log('', self)
-            self.log('NET ERROR: trying again in {} minutes...'.format(delay), self)
-            self.Toolkit.wait(delay)
-
         except:
             del calling['self']
+            delay = random.randint(5, 9)
 
-            if self._fails < 3:
-                self._fails += 1
-                self.Toolkit.wait(1 / 3)
+            if retry > 0:
+                calling['retry'] -= 1
+                print('ERROR: retrying {} more time...'.format(retry))
+                time.sleep(delay)
                 return self._request(**calling)
             else:
-                self._fails = 0
                 self.log(traceback.format_exc(), self)
-                return {'success': False}

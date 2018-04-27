@@ -55,16 +55,16 @@ class Toolkit(object):
         try:
             wrapper = {plg for plg in self.Plugins if plg.Brand == brand}.pop()
 
-            book = wrapper.book(symbol)
+            asks, bids, book = [], [], wrapper.book(symbol)
             if book is None:
                 return 0., 0.
 
-            asks, bids = [], []
             for price, amount in book.items():
                 if amount > 0:
                     asks.append(price)
                 else:
                     bids.append(price)
+
             return min(asks), max(bids)
         except:
             self.log(traceback.format_exc())
@@ -361,7 +361,7 @@ class Auditor(object):
                 self.log('Using the following parameters: ' + str(params), self)
                 self.log('The response was: ' + str(self.Wrapper.orders(**params)), self)
 
-            orders = list(self.Wrapper.orders(recheck=0).items())
+            orders = list(self.Wrapper.orders().items())
             self.log('(Current open orders are: {0})'.format(orders), self)
         except:
             self.log(traceback.format_exc(), self)
@@ -389,7 +389,7 @@ class Auditor(object):
                 self._cache['orders'].append(oid)
                 self.log('The response was: ' + str(oid), self)
 
-                orders = list(self.Wrapper.orders(recheck=0).items())
+                orders = list(self.Wrapper.orders().items())
                 self.log('(Current open orders are: {})'.format(orders), self)
 
                 self.log('', self)
@@ -398,7 +398,7 @@ class Auditor(object):
             else:
                 self.log('Internal error or insufficient funds to make SELL tests...', self)
 
-            orders = list(self.Wrapper.orders(recheck=0).items())
+            orders = list(self.Wrapper.orders().items())
             self.log('(Current open orders are: {})'.format(orders), self)
         except:
             self.log(traceback.format_exc(), self)

@@ -35,11 +35,11 @@ class Indicator(object):
             self.log('Selecting top symbols by performance...', self)
             t_delta = time.time()
 
-            tail = str(round(100 * ratio, 3)) + ' % of the symbols in downtrend.'
             tmp = dict(sorted(self._cache.items(), key=lambda k: k[1])[-5:])
             self.log('Preliminary selection is: ' + str(tmp), self)
 
-            if ratio > 1 - (1 / self.Toolkit.Phi) ** 3:  # ~ 0.76393202
+            tail = str(round(100 * ratio, 3)) + ' % of the symbols in downtrend.'
+            if ratio > 1 - (1 / self.Toolkit.Phi) ** 3:
                 self.log('ENTERING the market: ' + tail, self)
             else:
                 self.log('LEAVING the market: ' + tail, self)

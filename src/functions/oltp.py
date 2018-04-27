@@ -1,4 +1,3 @@
-import random
 import time
 import traceback
 
@@ -16,37 +15,29 @@ class Trader(object):
         self.Indicator = indicator
         self.Wrapper = self.Indicator.Wrapper
         self.Brand = self.Wrapper.Brand
+
         self.Toolkit = self.Wrapper.Toolkit
-
-        self._quantum = .1
-        self._first, self._last = 0, 0
-        self._symbols = set()
-
         self.log = self.Toolkit.log
         self.log(self.Toolkit.Greeting, self)
+        self._clock = 0
 
-    def probe(self, stop_loss=False):
+    def probe(self):
         """
         Detecting some good trading opportunities...
-
-        Important: If you wanna test some new crazy symbol by risking quantities much
-        below 'self.Toolkit.Quota', simply define 'stop_loss=False' here.
         """
 
         try:
             while not self.Toolkit.halt():
                 self.log('', self)
                 self.log('[ BEGIN: TRADE ]', self)
+
                 t_delta = time.time()
 
-                self._symbols = self.Wrapper.symbols()
-                assert self._symbols is not None
-
-                if not stop_loss:
-                    report = self._report(self._review(self._clear()))
-                else:
-                    report = self._report(self._flush(self._review(self._clear())))
+                report = self._report()
                 assert report is not None
+
+                orders = self._review()
+                assert orders is not None
 
                 broadway = self.Indicator.broadway()
                 assert broadway is not None
@@ -54,17 +45,23 @@ class Trader(object):
                 balance, holdings = report
                 if holdings[0] > self.Toolkit.Quota:
                     if len(broadway) > 0:
-                        self._chase(balance, broadway)
+                        goal = self._chase(balance, broadway)
+                        if goal not in [0, None]:
+                            self.log('', self)
+                            self.log('An overall profit of ~' + str(goal) +
+                                     '% is initially expected in this operation.', self)
                     else:
-                        self.log('No good symbols enough, waiting for better market '
-                                 + 'conditions...', self)
+                        self.log('', self)
+                        self.log('No good symbols enough, waiting for ' +
+                                 'better market conditions...', self)
                 else:
+                    self.log('', self)
                     self.log('Internal error or insufficient funds, sorry...', self)
-                    #self.Toolkit.wait(3 * self.Toolkit.Orbit)
+
                 t_delta = round(time.time() - t_delta, 3)
+                self.log('...probing done in {0} seconds.'.format(t_delta), self)
 
                 self.log('', self)
-                self.log('...probing done in {0} seconds.'.format(t_delta), self)
                 self.log('[ END: TRADE ]', self)
 
                 delay = self.Toolkit.Orbit - t_delta / 60
@@ -73,43 +70,45 @@ class Trader(object):
             self.log(traceback.format_exc(), self)
             self.probe()
 
-    def _clear(self):
+    def _report(self):
         """
-        Checking for idle money.
+        Briefly reporting the current status of your assets.
         """
 
         try:
-            self.log('', self)
-            self.log('CLEAR: Checking for altcoin balances not involved in alive orders.', self)
-            t_delta = time.time()
-
             balance = self.Wrapper.balance()
             assert balance is not None
 
-            orders = self.Wrapper.orders()
-            assert orders is not None
+            nakamoto = self.Toolkit.ticker(self.Brand, ('btc', 'usdt'))
+            assert nakamoto is not None
 
-            self.log('Your currently active orders are: ' + str(orders), self)
-            engaged = {s[0] for a, p, s in orders.values()}
+            holdings = {}
+            for currency, (available, on_orders) in balance.items():
+                subtotal = available + on_orders
+                holdings[currency] = [0., 0.]
 
-            for currency, (available, _) in balance.items():
-                symbol = currency, 'btc'
+                if currency == 'btc':
+                    holdings[currency] = [subtotal, subtotal * nakamoto[1]]
+                elif currency == 'usdt':
+                    holdings[currency] = [subtotal / nakamoto[0], subtotal]
+                else:
+                    ticker = self.Toolkit.ticker(self.Brand, (currency, 'btc'))
+                    if ticker is not None:
+                        btctotal = subtotal * ticker[1]
+                        holdings[currency] = [btctotal, btctotal * nakamoto[1]]
 
-                if symbol in self._symbols:
-                    eligible = available * self._value(*symbol) > self.Toolkit.Quota / self.Toolkit.Phi
+            fee = 1 - self.Wrapper.Fee / 100
+            holdings_btc, holdings_usdt = list(zip(*holdings.values()))
+            holdings = round(fee * sum(holdings_btc), 8), round(fee * sum(holdings_usdt), 2)
 
-                    if eligible and currency not in engaged:
-                        ticker = self.Toolkit.ticker(self.Brand, symbol)
-                        assert ticker is not None
-                        self._burn(symbol, -50 * self._quantum, ticker[0])
-
-            t_delta = round(time.time() - t_delta, 3)
-            self.log('...check done in {0} seconds.'.format(t_delta), self)
-            return orders
+            self.log('', self)
+            self.log('REPORT: Your current BALANCE is: ' + str(balance), self)
+            self.log('That\'s equals approximately to BTC {0} (USD {1}).'.format(*holdings), self)
+            return balance, holdings
         except:
             self.log(traceback.format_exc(), self)
 
-    def _review(self, last_orders):
+    def _review(self):
         """
         This will add x% per hour to your targets.
         """
@@ -122,15 +121,17 @@ class Trader(object):
             orders = self.Wrapper.orders()
             assert orders is not None
 
-            if last_orders != orders:
-                self.log('Your currently active orders are: ' + str(orders), self)
-
-            if t_delta - self._last > 3600:
+            if t_delta - self._clock > 3600:
                 for oid, (amount, price, symbol) in orders.items():
                     self.log('Canceling order [{0}]...'.format(oid), self)
-                    assert self.Wrapper.orders(oid) is not None
-                    self._burn(symbol, -2 * self._quantum, price)
-                self._last = t_delta
+                    if self.Wrapper.orders(oid) is not None:
+                        self._selling(symbol, price)
+                self._clock = t_delta
+
+                if len(orders) > 0:
+                    orders = self.Wrapper.orders()
+                    assert orders is not None
+            self.log('Your currently active orders are: ' + str(orders), self)
 
             t_delta = round(time.time() - t_delta, 3)
             self.log('...review done in {0} seconds.'.format(t_delta), self)
@@ -138,209 +139,104 @@ class Trader(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def _flush(self, last_orders, threshold=5):
+    def _chase(self, balance, broadway):
         """
-        This will close positions that are causing losses.
-        """
-
-        try:
-            self.log('', self)
-            self.log('FLUSH: Removing any assets that failed to become profitable...', self)
-            t_delta = time.time()
-
-            orders = self.Wrapper.orders()
-            assert orders is not None
-
-            if last_orders != orders:
-                self.log('Your currently active orders are: ' + str(orders), self)
-
-            for oid, (amount, price, symbol) in orders.items():
-                equity = abs(amount) * self._value(symbol[0], 'btc')
-
-                if 0 < equity < (1 - threshold / 100) * self.Toolkit.Quota:
-                    self.log('Canceling order [{0}]...'.format(oid), self)
-                    assert self.Wrapper.orders(oid) is not None
-
-                    ticker = self.Toolkit.ticker(self.Brand, symbol)
-                    assert ticker is not None
-                    self._burn(symbol, -30 * self._quantum, ticker[1], False)
-
-            t_delta = round(time.time() - t_delta, 3)
-            self.log('...removal done in {0} seconds.'.format(t_delta), self)
-            return orders
-        except:
-            self.log(traceback.format_exc(), self)
-
-    def _report(self, last_orders):
-        """
-        Briefly reporting the current status of your funds and assets.
-        """
-
-        try:
-            self.log('', self)
-            orders = self.Wrapper.orders()
-            assert orders is not None
-
-            if last_orders != orders:
-                self.log('Your currently active orders are: ' + str(orders), self)
-
-            balance = self.Wrapper.balance()
-            assert balance is not None
-
-            holdings = self._holdings(balance)
-            assert holdings is not None
-
-            self.log('Your current BALANCE is: ' + str(balance), self)
-            self.log('That\'s equals approximately to BTC {0} (USD {1}).'.format(*holdings), self)
-            return balance, holdings
-        except:
-            self.log(traceback.format_exc(), self)
-
-    def _holdings(self, balance):
-        """
-        The estimated value of your balance, expressed in BTC and USD.
-        """
-
-        try:
-            fee = 1 - self.Wrapper.Fee / 100
-            btc_total = sum(
-                (a + o) * self._value(c, 'btc')
-                for c, (a, o) in balance.items() if not c.startswith('usd')
-            )
-            usd_total = 0.
-
-            ticker = self.Toolkit.ticker(self.Brand, ('btc', 'usdt',))
-            assert ticker is not None
-
-            l_ask, h_bid = ticker
-            if 'usdt' in balance:
-                usd_total = fee * sum(balance['usdt']) / l_ask
-
-            btc_total += usd_total
-            usd_total = btc_total * h_bid
-            return round(btc_total, 8), round(usd_total, 2)
-        except:
-            self.log(traceback.format_exc(), self)
-
-    def _value(self, source, target):
-        """
-        Tries to return the approximate unit value from one currency to another.
-        """
-
-        try:
-            fee = 1 - self.Wrapper.Fee / 100
-            symbol, lobmys = (source, target), (target, source)
-
-            if source == target:
-                return 1.
-
-            elif symbol in self._symbols:
-                t_symbol = self.Toolkit.ticker(self.Brand, symbol)
-                assert t_symbol is not None
-                return round(fee * t_symbol[1], 8)
-
-            elif lobmys in self._symbols:
-                t_lobmys = self.Toolkit.ticker(self.Brand, lobmys)
-                assert t_lobmys is not None
-                return round(fee / t_lobmys[0], 8)
-
-            else:
-                return 0.
-        except:
-            self.log(traceback.format_exc(), self)
-
-    def _chase(self, balance, broadway, rchoice=False):
-        """
-        Ensures that the given symbol is bought & sold by the best market conditions.
+        Just combining the sequence of BUY and SELL operations.
         """
 
         try:
             self.log('', self)
             self.log('The selection received was: ' + str(broadway), self)
 
-            if not rchoice:
-                chosen = sorted(broadway.items(), key=lambda k: k[1])[-1][0]
-                self.log('The chosen symbol was: ' + str(chosen), self)
+            chosen = sorted(broadway.items(), key=lambda k: k[1])[-1][0]
+            self.log('The chosen symbol was: ' + str(chosen), self)
+
+            profit_goal = 0.
+            if balance['btc'][0] > self.Toolkit.Quota:
+                self.log('', self)
+                self.log('STARTING TRADE PROCEDURES FOR {} ...'.format(chosen), self)
+
+                buy_price = self._buying(chosen, .1)
+                assert buy_price not in [0, None]
+
+                self.Toolkit.wait()
+                profit_goal = self._selling(chosen, 1.01 * buy_price)
+                assert profit_goal not in [0, None]
+
+                self.log('', self)
+                self.log('TRADE PROCEDURES DONE FOR {} ...'.format(chosen), self)
             else:
-                chosen = random.choice(list(broadway))
-                self.log('The (randomly) chosen symbol was: ' + str(chosen), self)
-
-            if self._first in [0, chosen]:
-                self.log('But it\'s the first one of this session: nothing to do.', self)
-                if self._first == 0:
-                    self._first = chosen
-                return
-            self._first = None
-
-            if chosen in {s for a, p, s in self.Wrapper.orders().values()}:
-                self.log('But it\'s one of your current assets: nothing to do.', self)
-
-            elif balance['btc'][0] < self.Toolkit.Quota:
-                self.log('But apparently all of your funds are engaged already: nothing to do.', self)
-            else:
-                self.log('STARTING TRADE PROCEDURES FOR SYMBOL: ' + str(chosen), self)
-                buying = self._burn(chosen, self._quantum, None, False)
-                if buying is None:
-                    return
-
-                self.Toolkit.wait(self.Toolkit.Orbit)
-                if buying[1] in self.Wrapper.orders():
-                    self.Wrapper.orders(buying[1])
-
-                selling = self._burn(chosen, -50 * self._quantum, buying[0]['price'])
-                if selling is None:
-                    self.log('Buying in maker-mode for ' + str(chosen) + ' FAILED: sorry.', self)
-                    return
-                else:
-                    goal = round(100 * (selling[0]['price'] / buying[0]['price'] - 1), 3)
-                    self.log('An overall profit of ~' + str(goal) +
-                             '% is initially expected in this operation.', self)
-                    return goal
+                self.log('But apparently all of your funds are engaged ' +
+                         'already: nothing to do.', self)
+            return round(profit_goal, 3)
         except:
             self.log(traceback.format_exc(), self)
 
-    def _burn(self, symbol, margin, referential=None, maker=True):
+    def _buying(self, symbol, margin):
         """
-        Simply runs the 'fire()' method of the Wrapper class: just set
-        margin > 0 for BUY or margin < 0 for SELL.
-
-        Price will be calculated according to the lowest ask for BUY or
-        the "referential" attribute for SELL. All of your available
-        balance will be used in SELLS, or 'self.Toolkit.Quota' in BUYS.
+        This will try to BUY the given symbol, by the best market conditions.
         """
 
         try:
-            self.log('', self)
-
-            coef = [1 + margin / 100, 1 - margin / 100][maker]
-            base, quote = symbol[0], 'btc'
+            base, quote = symbol
+            assert quote == 'btc'
 
             balance = self.Wrapper.balance()
             assert balance is not None
+            assert quote in balance
+            assert balance[quote][0] > self.Toolkit.Quota
 
             ticker = self.Toolkit.ticker(self.Brand, symbol)
             assert ticker is not None
 
-            if margin > 0:
-                assert quote in balance
-                price = coef * ticker[0]
-                assert price > 0
-                amount = self.Toolkit.Quota / price
-            else:
-                if base not in balance: return
-                assert referential is not None
-                price = coef * referential
-                amount = -1 * balance[base][0]
-
+            l_ask, h_bid = ticker
+            price = (1 + margin / 100) * l_ask
+            amount = self.Toolkit.Quota / price
             params = {'amount': round(amount, 8), 'price': round(price, 8), 'symbol': symbol, }
-            side = ['SELL', 'BUY'][amount > 0]
 
-            self.log('Trying to ' + side + ': ' + str(symbol) + '...', self)
+            self.log('', self)
             self.log('Current TICKER is: ' + str(ticker), self)
-            self.log('Sending order with parameters: {0}...'.format(params), self)
+            self.log('Trying to BUY {0} by using parameters: {1}...'.format(symbol, params), self)
 
-            order_id = self.Wrapper.fire(**params)
-            assert order_id is not None
-            return params, order_id
+            assert self.Wrapper.fire(**params) is not None
+            return price
+
+        except AssertionError:
+            return 0.
+        except:
+            self.log(traceback.format_exc(), self)
+
+    def _selling(self, symbol, referential):
+        """
+        This will try to SELL the given symbol, by the best market conditions.
+        """
+
+        try:
+            base, quote = symbol
+            assert quote == 'btc'
+
+            balance = self.Wrapper.balance()
+            assert balance is not None
+            assert base in balance
+
+            amount = -1 * balance[base][0]
+            assert abs(amount) > 0
+
+            ticker = self.Toolkit.ticker(self.Brand, symbol)
+            assert ticker is not None
+
+            margin = self.Toolkit.Phi / 10
+            price = (1 + margin / 100) * referential
+            params = {'amount': round(amount, 8), 'price': round(price, 8), 'symbol': symbol, }
+
+            self.log('', self)
+            self.log('Current TICKER is: ' + str(ticker), self)
+            self.log('Trying to SELL {0} by using parameters: {1}...'.format(symbol, params), self)
+
+            assert self.Wrapper.fire(**params) is not None
+            return 100 * (price / referential - 1)
+
+        except AssertionError:
+            return 0.
         except:
             self.log(traceback.format_exc(), self)

@@ -1,11 +1,11 @@
 import hashlib
 import hmac
 import json
+import random
 import time
 import traceback
 
 from urllib import parse, request
-from urllib.error import HTTPError
 
 
 class Wrapper(object):
@@ -21,12 +21,10 @@ class Wrapper(object):
         """
 
         self.Brand, self.Fee = 'binance', .1
-        self._filters, self._orders = {}, {}
-        self._fails = 0
-
         self.Toolkit = toolkit
         self.Key, self.Secret = self.Toolkit.setup(self.Brand)
         self.log = self.Toolkit.log
+        self._filters, self._orders = {}, {}
 
     def symbols(self, btc_only=True):
         """
@@ -149,14 +147,18 @@ class Wrapper(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def orders(self, order_id=None, recheck=3):
+    def orders(self, order_id=None):
         """
+        Some delays are introduced here (with 'time.sleep(delay)') in order to
+        allow the site recognize newly created / canceled orders...
         """
 
         try:
+            delay = 5
             translate = {''.join(s).upper(): s for s in self._filters}
 
             if order_id is None:
+                time.sleep(delay)
                 req = self._request(('api/v3/openOrders', {'method': 'GET'},))
                 assert req is not None
 
@@ -165,14 +167,10 @@ class Wrapper(object):
                         [-1, 1][d['side'] == 'BUY'] * float(d['origQty']),
                         float(d['price']),
                         translate[d['symbol']]
-                    ) for d in req
+                    )
+                    for d in req
                 }
                 self._orders.update({oid: s for oid, (a, p, s) in tmp.items()})
-
-                if len(tmp) == 0 < recheck:
-                    time.sleep(3)
-                    recheck -= 1
-                    return self.orders(order_id, recheck)
             else:
                 params = {
                     'symbol': ''.join(self._orders[order_id]).upper(),
@@ -182,14 +180,12 @@ class Wrapper(object):
                 req = self._request(('api/v3/order', params,))
                 assert req is not None
                 tmp = -order_id
-
-            # Delaying a bit, to allow the site to recognize newly created / canceled orders...
-            time.sleep(5)
+                time.sleep(delay)
             return tmp
         except:
             self.log(traceback.format_exc(), self)
 
-    def _request(self, req_uri, signing=True):
+    def _request(self, req_uri, signing=True, debug=False, retry=3):
         """
         """
 
@@ -197,6 +193,10 @@ class Wrapper(object):
         base_uri = 'https://api.binance.com/'
 
         try:
+            if debug:
+                self.log('', self)
+                self.log('_request(self, req_uri, signing, debug): ' + str(calling), self)
+
             # SECURITY DELAY: in order to NOT get your IP banned!
             time.sleep(1)
 
@@ -218,23 +218,15 @@ class Wrapper(object):
                 tmp = json.loads(request.urlopen(base_uri + req_uri).read().decode())
 
             assert tmp is not None
-            self._fails = 0
             return tmp
-
-        except HTTPError:
-            delay = 7 * self.Toolkit.Orbit
-
-            self.log('', self)
-            self.log('NET ERROR: trying again in {} minutes...'.format(delay), self)
-            self.Toolkit.wait(delay)
-
         except:
             del calling['self']
+            delay = random.randint(5, 9)
 
-            if self._fails < 3:
-                self._fails += 1
-                self.Toolkit.wait(1 / 3)
+            if retry > 0:
+                calling['retry'] -= 1
+                print('ERROR: retrying {} more time...'.format(retry))
+                time.sleep(delay)
                 return self._request(**calling)
             else:
-                self._fails = 0
                 self.log(traceback.format_exc(), self)
