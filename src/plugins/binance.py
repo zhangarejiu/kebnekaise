@@ -198,7 +198,7 @@ class Wrapper(object):
                 self.log('_request(self, req_uri, signing, debug): ' + str(calling), self)
 
             # SECURITY DELAY: in order to NOT get your IP banned!
-            time.sleep(1)
+            time.sleep(1 / 3)
 
             if signing:
                 # type(req_uri) == tuple
