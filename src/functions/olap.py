@@ -38,7 +38,7 @@ class Indicator(object):
             self.log('Preliminary selection is: ' + str(bw), self)
 
             bw = {s: i for s, i in bw.items() if i > 7}
-            bw = [bw, {}][len(bw) < 3]
+            bw = [bw, {}][len(bw) < 5]
 
             self.log('Final selection is: ' + str(bw), self)
             return bw
