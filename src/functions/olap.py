@@ -46,10 +46,11 @@ class Indicator(object):
                 for bw in common.values():
                     if len(tmp) > 0:
                         tmp &= set(bw)
-                        if len(tmp) == 0:
-                            break
                     else:
                         tmp = set(bw)
+
+                    if len(tmp) == 0:
+                        break
 
                 tmp = {s: [] for s in tmp}
                 for bw in common.values():
