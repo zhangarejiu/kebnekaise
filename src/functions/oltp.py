@@ -190,12 +190,13 @@ class Trader(object):
             ticker = self.Toolkit.ticker(self.Brand, symbol)
             assert ticker is not None
 
+            fee = 1 - self.Wrapper.Fee / 100
             l_ask, h_bid = ticker
             price = (1 + margin / 100) * l_ask
-            amount = self.Toolkit.Quota / price
 
+            amount = fee * self.Toolkit.Quota / price
             if balance[quote][0] <= 2 * self.Toolkit.Quota:
-                amount = balance[quote][0] / price
+                amount = fee * balance[quote][0] / price
             params = {'amount': round(amount, 8), 'price': round(price, 8), 'symbol': symbol, }
 
             self.log('', self)

@@ -76,6 +76,9 @@ class Indicator(object):
             symbols = self.Wrapper.symbols()
             assert symbols is not None
 
+            if len(self._cache) == 0:
+                self.Database.query(self, self._cache)
+
             ls = len(symbols)
             self._cache.update({s: 0. for s in symbols - set(self._cache)})
 
