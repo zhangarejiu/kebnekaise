@@ -7,6 +7,7 @@ import time
 import traceback
 
 from configparser import ConfigParser
+from os.path import dirname, exists
 
 
 class Toolkit(object):
@@ -23,7 +24,7 @@ class Toolkit(object):
         self.CParser = ConfigParser(allow_no_value=True)
         self.CParser.read(self.Path + '/bin/conf.ini')
         self.Plugins = self._plugins()
-        self.Orbit = 3  # minutes
+        self.Orbit = 1  # minutes
         self.Quota = 1E-3  # bitcoins
 
         self.Phi = (1 + 5 ** .5) / 2  # https://en.wikipedia.org/wiki/Golden_ratio
@@ -95,6 +96,7 @@ class Toolkit(object):
         """
 
         now_str = time.strftime('%Y.%m.%d.%Z.%H.%M.%S', time.gmtime())
+        now_str = now_str.replace('GMT', 'UTC')
         today = now_str[:10].replace('.', '_')
         logfile = self.Path + '/logs/' + today + '.'
 
@@ -106,10 +108,10 @@ class Toolkit(object):
                 operation, component = 'Kebnekaise', 'TOOLKIT'
 
             message = '{0} |{1}| {2}\n'.format(now_str, component, message)
-            with open(logfile + operation + '.log', 'a') as fp:
+            with open(self.check(logfile + operation + '.log'), 'a') as fp:
                 fp.writelines([message])
         except:
-            with open(logfile + 'err', 'a') as fp:
+            with open(self.check(logfile + 'err'), 'a') as fp:
                 fp.writelines([traceback.format_exc() + '\n'])
 
     def wait(self, minutes=1.):
@@ -153,17 +155,37 @@ class Toolkit(object):
             # time.sleep(1 / 9)
 
             if remove:
-                os.remove(halt_file)
+                self.check(halt_file, True)
             elif send:
-                os.mknod(halt_file)
+                self.check(halt_file)
             elif self._halted:
                 return self._halted
             else:
-                self._halted = os.path.exists(halt_file)
+                self._halted = exists(halt_file)
                 return self._halted
 
         except (FileExistsError, FileNotFoundError):
             pass
+        except:
+            self.log(traceback.format_exc())
+
+    def check(self, fqfn, remove=False):
+        """
+        Ensures the existence or removal of the file whose path is given.
+        """
+
+        try:
+            if not remove:
+                os.makedirs(dirname(fqfn), exist_ok=True)
+                os.mknod(fqfn)
+                return fqfn
+            else:
+                os.remove(fqfn)
+
+        except FileExistsError:
+            return fqfn
+        except FileNotFoundError:
+            return
         except:
             self.log(traceback.format_exc())
 
@@ -191,12 +213,12 @@ class Auditor(object):
     Health test for enabled plugins.
     """
 
-    def __init__(self, trader):
+    def __init__(self, wrapper):
         """
         Constructor method.
         """
 
-        self.Wrapper = trader.Wrapper
+        self.Wrapper = wrapper
         self.Brand = self.Wrapper.Brand
         self._cache = {'errors': 0, 'symbols': [], 'balance': {}, 'orders': [], }
 

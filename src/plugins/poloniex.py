@@ -187,12 +187,10 @@ class Wrapper(object):
             return tmp
         except:
             del calling['self']
-            delay = random.randint(5, 9)
-
             if retry > 0:
                 calling['retry'] -= 1
-                print('ERROR: retrying {} more time...'.format(retry))
-                time.sleep(delay)
+                self.log('ERROR: retrying {} more time...'.format(retry), self)
+                self.Toolkit.wait(1 / 5)
                 return self._request(**calling)
             else:
                 self.log(traceback.format_exc(), self)

@@ -13,6 +13,7 @@ class Trader(object):
         """
 
         self.Indicator = indicator
+        self.Database = self.Indicator.Database
         self.Wrapper = self.Indicator.Wrapper
         self.Brand = self.Wrapper.Brand
 

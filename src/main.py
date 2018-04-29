@@ -8,7 +8,7 @@ from .plugins import *          # Appears as unused in PyCharm, but simply ignor
 from .plugins.sandbox import *  # Appears as unused in PyCharm, but simply ignore it.
 
 
-def operation(wrapper, olap_only=False):
+def operation(wrapper):
     """
     A process for each market.
     """
@@ -17,17 +17,13 @@ def operation(wrapper, olap_only=False):
         tlk.log(spacer, wrapper)
         tlk.log(tlk.Greeting, wrapper)
 
-        indicator = olap.Indicator(wrapper)
+        auditor = ctrl.Auditor(wrapper)
+        database = dbms.Database(wrapper)
+        indicator = olap.Indicator(database)
         trader = oltp.Trader(indicator)
-        auditor = ctrl.Auditor(trader)
 
         if tlk.setup()['live_mode'].lower() == 'yes':
-            if not olap_only:
-                trader.probe()
-            else:
-                while not tlk.halt():
-                    indicator.broadway()
-                    tlk.wait()
+            trader.probe()
         else:
             auditor.test()
 
@@ -37,7 +33,7 @@ def operation(wrapper, olap_only=False):
         tlk.log(traceback.format_exc(), wrapper)
 
 
-def control():
+def control(timeout=3):
     """
     Start a new process for each enabled (authorized) plugin.
     """
@@ -54,17 +50,16 @@ def control():
             b.start()
 
         while not tlk.halt():
-            time.sleep(1 / 3)
+            time.sleep(.1)
 
         for b in bots:
-            b.join()
-
-        time.sleep(3)
+            b.join(timeout)
+        time.sleep(timeout)
 
         for b in bots:
             b.terminate()
-
         tlk.halt(remove=True)
+
         tlk.log('SHUTTING DOWN OPERATIONS... BYE!')
         tlk.log('')
     except:
