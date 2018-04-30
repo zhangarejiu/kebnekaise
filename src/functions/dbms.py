@@ -54,19 +54,22 @@ class Database(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def _load(self, archive):
+    def _load(self, archive, data=None):
         """
         """
 
         try:
             self.Toolkit.check(archive)
-
             if os.stat(archive).st_size == 0:
                 with open(archive, 'wb') as fp:
                     pickle.dump({}, fp, pickle.HIGHEST_PROTOCOL)
 
             with open(archive, 'rb') as fp:
-                return pickle.load(fp)
+                tmp = pickle.load(fp)
+
+            if data is not None:
+                tmp.update(data)
+            return tmp
         except:
             self.log(traceback.format_exc(), self)
 
@@ -78,6 +81,7 @@ class Database(object):
             if data is None:
                 data = {}
 
+            data = self._load(archive, data)
             with open(archive, 'wb') as fp:
                 pickle.dump(data, fp, pickle.HIGHEST_PROTOCOL)
         except:

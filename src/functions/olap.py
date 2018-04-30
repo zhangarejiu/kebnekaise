@@ -41,7 +41,8 @@ class Indicator(object):
             #self.log('Common indexes are: ' + str(common), self)
 
             if len(common) > 1:
-                common = list(zip(*sorted((len(v), v) for v in common.values())[-3:]))[1]
+                common = list(zip(*sorted([
+                    (len(v), v) for v in common.values()], key=lambda k: k[0])[-3:]))[1]
                 tmp = set()
 
                 for bw in common:
