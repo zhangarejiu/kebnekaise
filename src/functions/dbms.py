@@ -49,7 +49,7 @@ class Database(object):
                 return tmp
 
             else:  # write (only you)
-                assert type(data) in [dict, set]
+                assert type(data) == dict
                 self._dump(fqfn, {account: data})
         except:
             self.log(traceback.format_exc(), self)

@@ -1,7 +1,6 @@
 import hashlib
 import hmac
 import json
-import random
 import time
 import traceback
 
@@ -189,7 +188,7 @@ class Wrapper(object):
             if retry > 0:
                 calling['retry'] -= 1
                 self.log('ERROR: retrying {} more time...'.format(retry), self)
-                self.Toolkit.wait(1 / 5)
+                time.sleep(5)
                 return self._request(**calling)
             else:
                 self.log(traceback.format_exc(), self)

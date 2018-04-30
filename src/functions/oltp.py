@@ -20,7 +20,7 @@ class Trader(object):
         self.Toolkit = self.Wrapper.Toolkit
         self.log = self.Toolkit.log
         self.log(self.Toolkit.Greeting, self)
-        self._clock = 0
+        self._schedule = {}
 
     def probe(self):
         """
@@ -31,14 +31,11 @@ class Trader(object):
             while not self.Toolkit.halt():
                 self.log('', self)
                 self.log('[ BEGIN: TRADE ]', self)
-
                 t_delta = time.time()
 
                 report = self._report()
                 assert report is not None
-
-                orders = self._review()
-                assert orders is not None
+                assert self._review() is not None
 
                 broadway = self.Indicator.broadway()
                 assert broadway is not None
@@ -109,9 +106,11 @@ class Trader(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def _review(self):
+    def _review(self, timeout=30):
         """
-        This will add x% per hour to your targets.
+        This method adds interest of X % every (timeout) minutes, to the prices of your currently open orders.
+
+        X = variable "margin" in self._selling()
         """
 
         try:
@@ -122,16 +121,25 @@ class Trader(object):
             orders = self.Wrapper.orders()
             assert orders is not None
 
-            if t_delta - self._clock > 3600:
-                for oid, (amount, price, symbol) in orders.items():
-                    self.log('Canceling order [{0}]...'.format(oid), self)
-                    if self.Wrapper.orders(oid) is not None:
-                        self._selling(symbol, price)
-                self._clock = t_delta
+            self._schedule = self.Database.query(self)
+            for oid, (amount, price, symbol) in orders.items():
+                expired = oid in self._schedule and t_delta - self._schedule[oid] > 60 * timeout
+                missing = oid not in self._schedule
 
-                if len(orders) > 0:
-                    orders = self.Wrapper.orders()
-                    assert orders is not None
+                if expired or missing:
+                    self.log('Canceling order [{0}]...'.format(oid), self)
+                    assert self.Wrapper.orders(oid) is not None
+
+                    selling = self._selling(symbol, price)
+                    assert selling not in [0, None]
+                    self._schedule[selling[1]] = t_delta
+                    self.Database.query(self, self._schedule)
+
+            if len(orders) > 0:
+                orders = self.Wrapper.orders()
+                assert orders is not None
+
+            self.log('', self)
             self.log('Your currently active orders are: ' + str(orders), self)
 
             t_delta = round(time.time() - t_delta, 3)
@@ -157,12 +165,19 @@ class Trader(object):
                 self.log('', self)
                 self.log('STARTING TRADE PROCEDURES FOR {} ...'.format(chosen), self)
 
-                buy_price = self._buying(chosen, .1)
-                assert buy_price not in [0, None]
+                buying = self._buying(chosen, .1)
+                assert buying not in [0, None]
+                buy_price, oid = buying
 
                 self.Toolkit.wait()
-                profit_goal = self._selling(chosen, 1.01 * buy_price)
-                assert profit_goal not in [0, None]
+
+                selling = self._selling(chosen, 1.01 * buy_price)
+                assert selling not in [0, None]
+                sell_price, oid = selling
+
+                self._schedule[oid] = time.time()
+                self.Database.query(self, self._schedule)
+                profit_goal = 100 * (sell_price / buy_price - 1)
 
                 self.log('', self)
                 self.log('TRADE PROCEDURES DONE FOR {} ...'.format(chosen), self)
@@ -194,7 +209,7 @@ class Trader(object):
             l_ask, h_bid = ticker
             price = (1 + margin / 100) * l_ask
 
-            amount = fee * self.Toolkit.Quota / price
+            amount = self.Toolkit.Quota / price
             if balance[quote][0] <= 2 * self.Toolkit.Quota:
                 amount = fee * balance[quote][0] / price
             params = {'amount': round(amount, 8), 'price': round(price, 8), 'symbol': symbol, }
@@ -203,8 +218,10 @@ class Trader(object):
             self.log('Current TICKER is: ' + str(ticker), self)
             self.log('Trying to BUY {0} by using parameters: {1}...'.format(symbol, params), self)
 
-            assert self.Wrapper.fire(**params) is not None
-            return price
+            order_id = self.Wrapper.fire(**params)
+            assert order_id is not None
+            return price, order_id
+
         except AssertionError:
             return 0.
         except:
@@ -229,7 +246,7 @@ class Trader(object):
             ticker = self.Toolkit.ticker(self.Brand, symbol)
             assert ticker is not None
 
-            margin = self.Toolkit.Phi / 10
+            margin = .1
             price = (1 + margin / 100) * referential
             params = {'amount': round(amount, 8), 'price': round(price, 8), 'symbol': symbol, }
 
@@ -237,8 +254,10 @@ class Trader(object):
             self.log('Current TICKER is: ' + str(ticker), self)
             self.log('Trying to SELL {0} by using parameters: {1}...'.format(symbol, params), self)
 
-            assert self.Wrapper.fire(**params) is not None
-            return 100 * (price / referential - 1)
+            order_id = self.Wrapper.fire(**params)
+            assert order_id is not None
+            return price, order_id
+
         except AssertionError:
             return 0.
         except:

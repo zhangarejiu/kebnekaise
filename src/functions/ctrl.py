@@ -121,8 +121,8 @@ class Toolkit(object):
 
         try:
             delay = int(60 * minutes)
-            delay = [delay, 10][delay < 10]
-            c, r = 0, random.randrange(delay - 10, delay + 10)
+            delay = [delay, 60][delay < 60]
+            c, r = 0, random.randrange(delay - 5, delay + 5)
 
             while not (self.halt() or c == r):
                 time.sleep(1)
@@ -163,9 +163,6 @@ class Toolkit(object):
             else:
                 self._halted = exists(halt_file)
                 return self._halted
-
-        except (FileExistsError, FileNotFoundError):
-            pass
         except:
             self.log(traceback.format_exc())
 

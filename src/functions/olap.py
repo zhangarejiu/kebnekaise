@@ -1,4 +1,3 @@
-import random
 import time
 import traceback
 
@@ -109,17 +108,17 @@ class Indicator(object):
             t24h = self.Wrapper.ticker24h(symbol)
             assert t24h is not None
 
-            book = self.Wrapper.book(symbol, 5)
-            assert book is not None
-
             _open, _high, _low, _close, _volume = t24h
-            assert _volume > 100 and _close > 1E-5
+            assert _volume > 100 and _low > 1E-5
 
             volatility = 100 * (_high / _low - 1)
             assert volatility < 5
 
             variation = 100 * (_close / _open - 1)
             assert abs(variation) < 3
+
+            book = self.Wrapper.book(symbol, 5)
+            assert book is not None
 
             asks, bids, l_ask, h_bid = 0., 0., 0., 0.
             for price, amount in book.items():
