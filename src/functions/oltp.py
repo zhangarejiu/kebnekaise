@@ -133,13 +133,13 @@ class Trader(object):
                     selling = self._selling(symbol, price)
                     assert selling not in [0, None]
                     self._schedule[selling[1]] = t_delta
+
                     self.Database.query(self, self._schedule)
+                    self.log('', self)
 
             if len(orders) > 0:
                 orders = self.Wrapper.orders()
                 assert orders is not None
-
-            self.log('', self)
             self.log('Your currently active orders are: ' + str(orders), self)
 
             t_delta = round(time.time() - t_delta, 3)

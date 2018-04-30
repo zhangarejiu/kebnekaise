@@ -40,9 +40,11 @@ class Indicator(object):
             common = self.Database.query(self, 0)
             #self.log('Common indexes are: ' + str(common), self)
 
-            if not len(common) < 2:
+            if len(common) > 1:
+                common = list(zip(*sorted((len(v), v) for v in common.values())[-3:]))[1]
                 tmp = set()
-                for bw in common.values():
+
+                for bw in common:
                     if len(tmp) > 0:
                         tmp &= set(bw)
                     else:
@@ -52,7 +54,7 @@ class Indicator(object):
                         break
 
                 tmp = {s: [] for s in tmp}
-                for bw in common.values():
+                for bw in common:
                     for s in tmp:
                         tmp[s].append(bw[s])
             else:
@@ -72,11 +74,11 @@ class Indicator(object):
         """
 
         try:
-            symbols = self.Wrapper.symbols()
-            assert symbols is not None
-
             if len(self._cache) == 0:
                 self.Database.query(self, self._cache)
+
+            symbols = self.Wrapper.symbols()
+            assert symbols is not None
 
             ls = len(symbols)
             self._cache.update({s: 0. for s in symbols - set(self._cache)})
