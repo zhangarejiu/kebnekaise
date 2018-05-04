@@ -152,6 +152,7 @@ class Wrapper(object):
                 amount += s * ma
             while abs(price * amount) > max_notional:
                 amount -= s * ma
+            price, amount = float(price), float(amount)
 
             tmp = {
                 'price': '{:.8f}'.format(price),
