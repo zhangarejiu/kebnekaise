@@ -137,9 +137,10 @@ class Trader(object):
                 self.log('', self)
                 self.log('STARTING TRADE PROCEDURES FOR {} ...'.format(chosen), self)
 
-                buying = self._buying(chosen, 0)
+                buying = self._buying(chosen, -1)
                 assert buying is not None
                 buy_price, oid = buying
+                time.sleep(3)
 
                 if oid not in self.Wrapper.orders():
                     selling = self._selling(chosen, buy_price)
@@ -230,8 +231,11 @@ class Trader(object):
 
             if not margin > 0:
                 assert measures[0] > 10 * self.Toolkit.Quota
+            fee = 1 - self.Wrapper.Fee / 100
 
             amount = self.Toolkit.Quota / price
+            if balance[quote][0] <= 2 * self.Toolkit.Quota:
+                amount = fee * balance[quote][0] / price
             params = {'amount': round(amount, 8), 'price': round(price, 8), 'symbol': symbol, }
 
             self.log('', self)
