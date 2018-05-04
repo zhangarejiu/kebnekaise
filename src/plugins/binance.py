@@ -134,12 +134,11 @@ class Wrapper(object):
         try:
             price, amount = Decimal(str(price)), Decimal(str(amount))
 
-            mp = Decimal(self._filters[symbol]['minPrice'])
-            ma = Decimal(self._filters[symbol]['minQty'])
+            min_price = Decimal(self._filters[symbol]['minPrice'])
+            min_amount = Decimal(self._filters[symbol]['minQty'])
             min_notional = Decimal(self._filters[symbol]['minNotional'])
-            max_notional = abs(price * amount)
 
-            r_price, r_amount = price % mp, amount % ma
+            r_price, r_amount = price % min_price, amount % min_amount
             if amount > 0:
                 price -= r_price
                 amount += 1 - r_amount
@@ -149,9 +148,7 @@ class Wrapper(object):
 
             s = amount / abs(amount)
             while abs(price * amount) < min_notional:
-                amount += s * ma
-            while abs(price * amount) > max_notional:
-                amount -= s * ma
+                amount += s * min_amount
             price, amount = float(price), float(amount)
 
             tmp = {
@@ -162,7 +159,6 @@ class Wrapper(object):
                 'timeInForce': 'GTC',
                 'method': 'POST',
             }
-
             if amount > 0:
                 tmp.update({'quantity': '{:.8f}'.format(amount), 'side': 'BUY', })
             else:

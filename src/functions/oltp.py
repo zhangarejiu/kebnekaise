@@ -126,13 +126,10 @@ class Trader(object):
         """
 
         try:
-            self.log('', self)
-            self.log('The chosen symbol was: ' + str(chosen), self)
+            if chosen is None:
+                return
 
             profit_goal = 0
-            if chosen is None:
-                return profit_goal
-
             if balance['btc'][0] > self.Toolkit.Quota:
                 self.log('', self)
                 self.log('STARTING TRADE PROCEDURES FOR {} ...'.format(chosen), self)
@@ -156,7 +153,7 @@ class Trader(object):
                 self.log('', self)
                 self.log('TRADE PROCEDURES DONE FOR {} ...'.format(chosen), self)
             else:
-                self.log('But apparently all of your funds are engaged ' +
+                self.log('Apparently all of your funds are engaged ' +
                          'already: nothing to do.', self)
             return profit_goal
 
@@ -190,16 +187,20 @@ class Trader(object):
                         h_bid_depth > l_ask_depth > 10,
                         spread < 1 - self.Wrapper.Fee,
                         buy_pressure > 100,
-                    ]
+                        ]
                     if False not in requirements:
                         forecast[symbol] = int(buy_pressure / spread)
 
+            self.log('', self)
+            self.log('Current forecast is: ' + str(forecast), self)
+
             if len(forecast) > 0:
-                self.log('Current forecast is: ' + str(forecast), self)
-                return sorted(forecast.items(), key=lambda k: k[1])[-1][0]
+                chosen = sorted(forecast.items(), key=lambda k: k[1])[-1][0]
+                self.log('The chosen symbol was: ' + str(chosen), self)
             else:
-                self.log('But there\'s no symbol to choose: doing nothing.', self)
+                self.log('As there\'s no symbol to choose, I\'m doing nothing.', self)
                 return
+            return chosen
         except:
             self.log(traceback.format_exc(), self)
 
@@ -227,7 +228,8 @@ class Trader(object):
             price = l_ask
             amount = self.Toolkit.Quota / price
             if balance[quote][0] <= 2 * self.Toolkit.Quota:
-                amount = fee * balance[quote][0] / price
+                c = self.Toolkit.Quota / 10
+                amount = (balance[quote][0] - c) / price
             params = {'amount': round(amount, 8), 'price': round(price, 8), 'symbol': symbol, }
 
             self.log('', self)
