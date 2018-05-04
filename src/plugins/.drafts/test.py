@@ -1,5 +1,6 @@
-import time
+# BINANCE FILTERS NIGHTMARE...
 
+import time
 from decimal import *
 
 
@@ -2191,10 +2192,11 @@ Quota = 1E-3
 fee = 1 - .1 / 100
 
 ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### #####
+# BUY
 
-symbol = 'kmd', 'btc'
-balance = {'usdt': (0.00394637, 0.0), 'ltc': (5.03e-06, 0.0), 'btc': (0.00161204, 0.0), 'xvg': (0.843594, 0.0)}
-ticker = 6.763e-05, 6.742e-05, [12, 18, 376.34797329813875]
+symbol = 'icx', 'btc'
+balance = {'btc': (0.00158948, 0.0), 'bnb': (0.01327891, 0.0)}
+ticker = 0.0004367, 0.0004357, [24, 24, 163.00494280015667]
 
 l_ask, h_bid, measures = ticker
 assert measures[0] > 10
@@ -2203,52 +2205,46 @@ base, quote = symbol
 price = l_ask
 amount = Quota / price
 if balance[quote][0] <= 2 * Quota:
-    amount = fee * balance[quote][0] / price
+    c = Quota / 10
+    amount = (balance[quote][0] - c) / price
+
+##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### #####
+# SELL
+
+price, amount = (1 + .3 / 100) * 0.0004367, -0.000001
+params = {'amount': round(amount, 8), 'price': round(price, 8), 'symbol': symbol, }
 
 ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### #####
 
-amount, price = -3.52647, 0.00045145
-params = {'amount': round(amount, 8), 'price': round(price, 8), 'symbol': symbol, }
 print('params = ' + str(params))
 
-##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### #####
-
-price, amount = Decimal(str(params['price'])), Decimal(str(params['amount']))
+price, amount = Decimal(str(price)), Decimal(str(amount))
+print('[price, amount] = ' + str([price, amount]))
 
 min_price = Decimal(_filters[symbol]['minPrice'])
 min_amount = Decimal(_filters[symbol]['minQty'])
 min_notional = Decimal(_filters[symbol]['minNotional'])
-max_notional = abs(price * amount)
-
-print('[mp, ma, min_notional, max_notional] = ' + str([min_price, min_amount, min_notional, max_notional]))
-print('[price, amount] = ' + str([price, amount]))
+print('[min_price, min_amount, min_notional] = ' + str([min_price, min_amount, min_notional]))
 
 r_price, r_amount = price % min_price, amount % min_amount
 print('[r_price, r_amount] = ' + str([r_price, r_amount]))
 
 if amount > 0:
     price -= r_price
-    amount += 1 - r_amount
+    amount += min_amount - r_amount
 else:
-    price += 1 - r_price
+    price += min_price - r_price
     amount -= r_amount
 print('[price, amount] = ' + str([price, amount]))
 
-s = amount / abs(amount)
-amount = abs(amount)
-
-while not max_notional >= price * amount >= min_notional:
-    if price * amount < min_notional:
-        amount += min_amount
-    else:
-        amount -= min_amount
+s = [-1, 1][amount > 0]
+while abs(price * amount) < min_notional:
+    amount += s * min_amount
     print('[UPDATED] amount = ' + str(amount))
-    break
-amount *= s
-
-price, amount = round(price, 8), round(amount, 8)
 print('[price, amount] = ' + str([price, amount]))
-print('[FLOATed] [price, amount] = ' + str([float(price), float(amount)]))
+
+price, amount = float(price), float(amount)
+print('[price, amount] = ' + str([price, amount]))
 
 tmp = {
     'price': '{:.8f}'.format(price),

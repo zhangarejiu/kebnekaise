@@ -206,8 +206,6 @@ class Trader(object):
         This will try to BUY the given symbol, by the best market conditions.
         """
 
-        fee = 1 - self.Wrapper.Fee / 100
-
         try:
             base, quote = symbol
             assert quote == 'btc'

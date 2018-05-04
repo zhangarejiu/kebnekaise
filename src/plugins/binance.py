@@ -141,12 +141,12 @@ class Wrapper(object):
             r_price, r_amount = price % min_price, amount % min_amount
             if amount > 0:
                 price -= r_price
-                amount += 1 - r_amount
+                amount += min_amount - r_amount
             else:
-                price += 1 - r_price
+                price += min_price - r_price
                 amount -= r_amount
 
-            s = amount / abs(amount)
+            s = [-1, 1][amount > 0]
             while abs(price * amount) < min_notional:
                 amount += s * min_amount
             price, amount = float(price), float(amount)
