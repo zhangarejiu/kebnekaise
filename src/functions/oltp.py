@@ -42,13 +42,10 @@ class Trader(object):
                 if holdings[0] > self.Toolkit.Quota:
                     if len(broadway) > 0:
                         goal = self._chase(balance, self._forecast(broadway))
-                        if goal is not None:
+                        if goal not in [0, None]:
                             self.log('', self)
                             self.log('An overall profit of ~' + str(goal) +
                                      '% is initially expected in this operation.', self)
-                        else:
-                            self.log('', self)
-                            self.log('Unexpected error in "probe()" function: trying again...', self)
                     else:
                         self.log('', self)
                         self.log('No good symbols enough, waiting for ' +
