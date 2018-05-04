@@ -5,8 +5,8 @@
     https://github.com/kebnekaise-io/kebnekaise
 
 ##### SERVICES & TOOLS (Without them I can't work):
-    https://www.hostwinds.com
     https://www.jetbrains.com/pycharm
+    https://www.hostwinds.com
     https://www.bing.com/translator
     https://translate.google.com
     https://live.blockcypher.com
@@ -24,9 +24,9 @@
 	https://bitfalls.com/2018/01/12/anatomy-pump-dump-group/
 
 ##### GOLD EXCHANGES (Pretty liquid market, 30+ symbols for BTC, tested and approved API: I love it!):
+    https://www.binance.com   
     https://bittrex.com     
     https://poloniex.com
-    https://www.binance.com   
     
 ##### MANUAL EXCHANGES (They have some cute features that I need, but technically are not suitable for algotrading):
     https://www.bitstamp.net

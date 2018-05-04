@@ -13,7 +13,7 @@ class Trader(object):
         """
 
         self.Indicator = indicator
-        self.Database = self.Indicator.Database
+        self.Database = self.Indicator.Database  # maybe useful in the future...
         self.Wrapper = self.Indicator.Wrapper
         self.Brand = self.Wrapper.Brand
 
@@ -39,13 +39,16 @@ class Trader(object):
                 assert broadway is not None
 
                 balance, holdings = report
-                if holdings[0] > self.Toolkit.Quota or True:
+                if holdings[0] > self.Toolkit.Quota:
                     if len(broadway) > 0:
-                        goal = self._chase(balance, broadway)
-                        if goal not in [0, None]:
+                        goal = self._chase(balance, self._forecast(broadway))
+                        if goal is not None:
                             self.log('', self)
                             self.log('An overall profit of ~' + str(goal) +
                                      '% is initially expected in this operation.', self)
+                        else:
+                            self.log('', self)
+                            self.log('Unexpected error in "probe()" function: trying again...', self)
                     else:
                         self.log('', self)
                         self.log('No good symbols enough, waiting for ' +
@@ -56,6 +59,7 @@ class Trader(object):
                              'deposit/transfer to your account and try again. Thanks.', self)
 
                 t_delta = round(time.time() - t_delta, 3)
+                self.log('', self)
                 self.log('...probing done in {0} seconds.'.format(t_delta), self)
 
                 self.log('', self)
@@ -116,15 +120,63 @@ class Trader(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def _chase(self, balance, broadway):
+    def _chase(self, balance, chosen):
         """
         Just combining the sequence of BUY and SELL operations.
         """
 
         try:
             self.log('', self)
-            self.log('The selection received was: ' + str(broadway), self)
+            self.log('The chosen symbol was: ' + str(chosen), self)
 
+            profit_goal = 0
+            if chosen is None:
+                return profit_goal
+
+            if balance['btc'][0] > self.Toolkit.Quota:
+                self.log('', self)
+                self.log('STARTING TRADE PROCEDURES FOR {} ...'.format(chosen), self)
+
+                buying = self._buying(chosen, 0)
+                assert buying is not None
+                buy_price, oid = buying
+
+                if oid not in self.Wrapper.orders():
+                    selling = self._selling(chosen, buy_price)
+                    assert selling is not None
+                    sell_price, oid = selling
+
+                    profit_goal = round(100 * (sell_price / buy_price - 1), 8)
+                else:
+                    self.log('', self)
+                    self.log('BUY routine FAILED, sorry...', self)
+                    self.Wrapper.cancel(oid)
+
+                self.log('', self)
+                self.log('TRADE PROCEDURES DONE FOR {} ...'.format(chosen), self)
+            else:
+                self.log('But apparently all of your funds are engaged ' +
+                         'already: nothing to do.', self)
+            return profit_goal
+
+        except AssertionError:
+            self.log('', self)
+            self.log('Unexpected error while trading {}, sorry...', self)
+
+            orders = list(self.Wrapper.orders().items())
+            self.log('(Current open orders are: {})'.format(orders), self)
+            return
+        except:
+            self.log(traceback.format_exc(), self)
+
+    def _forecast(self, broadway):
+        """
+        Tries to figure which symbol is most suitable for trade right now.
+        """
+
+        try:
+            self.log('', self)
+            self.log('The selection received was: ' + str(broadway), self)
             forecast = {}
 
             for symbol in broadway:
@@ -141,41 +193,12 @@ class Trader(object):
                     if False not in requirements:
                         forecast[symbol] = int(buy_pressure / spread)
 
-            self.log('', self)
-            self.log('Current forecast is: ' + str(forecast), self)
-
-            if not len(forecast) > 0:
-                self.log('But there\'s no symbol to choose: doing nothing.', self)
-                return 0
-
-            chosen = sorted(forecast.items(), key=lambda k: k[1])[-1][0]
-            self.log('The chosen symbol was: ' + str(chosen), self)
-
-            profit_goal = 0
-            if balance['btc'][0] > self.Toolkit.Quota:
-                self.log('', self)
-                self.log('STARTING TRADE PROCEDURES FOR {} ...'.format(chosen), self)
-
-                buying = self._buying(chosen, 0)
-                assert buying is not None
-                buy_price, oid = buying
-
-                time.sleep(3)
-
-                selling = self._selling(chosen, buy_price)
-                assert selling is not None
-                sell_price, oid = selling
-                profit_goal = round(100 * (sell_price / buy_price - 1), 8)
-
-                self.log('', self)
-                self.log('TRADE PROCEDURES DONE FOR {} ...'.format(chosen), self)
+            if len(forecast) > 0:
+                self.log('Current forecast is: ' + str(forecast), self)
+                return sorted(forecast.items(), key=lambda k: k[1])[-1][0]
             else:
-                self.log('But apparently all of your funds are engaged ' +
-                         'already: nothing to do.', self)
-            return profit_goal
-
-        except AssertionError:
-            return
+                self.log('But there\'s no symbol to choose: doing nothing.', self)
+                return
         except:
             self.log(traceback.format_exc(), self)
 
@@ -199,11 +222,14 @@ class Trader(object):
             ticker = self.Toolkit.ticker(self.Brand, symbol)
             assert ticker is not None
 
-            l_ask, h_bid, _ = ticker
+            l_ask, h_bid, measures = ticker
             if type(margin) == float:
                 price = (1 - margin / 100) * l_ask  # margin in percentage points
             else:
                 price = l_ask - margin * satoshi  # margin in satoshies
+
+            if not margin > 0:
+                assert measures[0] > 10 * self.Toolkit.Quota
 
             amount = self.Toolkit.Quota / price
             params = {'amount': round(amount, 8), 'price': round(price, 8), 'symbol': symbol, }
@@ -212,8 +238,10 @@ class Trader(object):
             self.log('Current TICKER is: ' + str(ticker), self)
             self.log('Trying to BUY {0} by using parameters: {1}...'.format(symbol, params), self)
 
-            order_id = self.Wrapper.fire(**params)
-            assert order_id is not None
+            buying = self.Wrapper.fire(**params)
+            assert buying is not None
+
+            order_id, price = buying
             return price, order_id
 
         except AssertionError:
@@ -245,8 +273,10 @@ class Trader(object):
             self.log('REFERENCE price was: ' + str(referential), self)
             self.log('Trying to SELL {0} by using parameters: {1}...'.format(symbol, params), self)
 
-            order_id = self.Wrapper.fire(**params)
-            assert order_id is not None
+            selling = self.Wrapper.fire(**params)
+            assert selling is not None
+
+            order_id, price = selling
             return price, order_id
 
         except AssertionError:

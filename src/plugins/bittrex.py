@@ -140,7 +140,7 @@ class Wrapper(object):
             req = self._request((uri, tmp,))
             assert req['success']
 
-            return req['result']['uuid']
+            return req['result']['uuid'], tmp['rate']
         except:
             self.log(traceback.format_exc(), self)
 

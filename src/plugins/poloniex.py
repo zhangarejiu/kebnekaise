@@ -139,7 +139,7 @@ class Wrapper(object):
             req = self._request(('tradingApi', tmp,))
             assert req is not None
 
-            return int(req['orderNumber'])
+            return int(req['orderNumber']), tmp['rate']
         except:
             self.log(traceback.format_exc(), self)
 

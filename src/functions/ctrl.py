@@ -366,16 +366,18 @@ class Auditor(object):
             price = .95 * h_bid
             amount = self.Toolkit.Quota / price
             params.update({'amount': round(amount, 8), 'price': round(price, 8), })
-
             self.log('Putting a BUY order with parameters: ' + str(params), self)
-            oid = self.Wrapper.fire(**params)
 
-            if oid is not None:
-                self._cache['orders'].append(oid)
-                self.log('The response was: ' + str(oid), self)
-            else:
-                self.log('Internal error or insufficient funds to make BUY tests...', self)
-                self._cache['errors'] += 1
+            buying = self.Wrapper.fire(**params)
+            assert buying is not None
+            oid, _ = buying
+
+            self._cache['orders'].append(oid)
+            self.log('The response was: ' + str(buying), self)
+
+        except AssertionError:
+            self.log('Internal error or insufficient funds to make BUY tests...', self)
+            self._cache['errors'] += 1
         except:
             self.log(traceback.format_exc(), self)
             self._cache['errors'] += 1
@@ -431,26 +433,28 @@ class Auditor(object):
             price = 1.05 * l_ask
             amount = -1 * self.Toolkit.Quota
             params.update({'amount': round(amount, 8), 'price': round(price, 8), })
-
             self.log('Putting a SELL order with parameters: ' + str(params), self)
-            oid = self.Wrapper.fire(**params)
 
-            if oid is not None:
-                self._cache['orders'].append(oid)
-                self.log('The response was: ' + str(oid), self)
+            selling = self.Wrapper.fire(**params)
+            assert selling is not None
+            oid, _ = selling
 
-                orders = list(self.Wrapper.orders().items())
-                self.log('(Current open orders are: {})'.format(orders), self)
-
-                self.log('', self)
-                self.log('Canceling order # {}...'.format(oid), self)
-                self.Wrapper.cancel(oid)
-            else:
-                self.log('Internal error or insufficient funds to make SELL tests...', self)
-                self._cache['errors'] += 1
+            self._cache['orders'].append(oid)
+            self.log('The response was: ' + str(selling), self)
 
             orders = list(self.Wrapper.orders().items())
             self.log('(Current open orders are: {})'.format(orders), self)
+
+            self.log('', self)
+            self.log('Canceling order # {}...'.format(oid), self)
+            self.Wrapper.cancel(oid)
+
+            orders = list(self.Wrapper.orders().items())
+            self.log('(Current open orders are: {})'.format(orders), self)
+
+        except AssertionError:
+            self.log('Internal error or insufficient funds to make SELL tests...', self)
+            self._cache['errors'] += 1
         except:
             self.log(traceback.format_exc(), self)
             self._cache['errors'] += 1

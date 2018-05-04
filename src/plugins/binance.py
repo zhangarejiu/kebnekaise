@@ -167,7 +167,7 @@ class Wrapper(object):
 
             oid = int(req['clientOrderId'])
             self._orders[oid] = symbol
-            return oid
+            return oid, price
         except:
             self.log(traceback.format_exc(), self)
 

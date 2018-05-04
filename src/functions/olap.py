@@ -12,7 +12,7 @@ class Indicator(object):
         Constructor method.
         """
 
-        self.Database = database
+        self.Database = database  # maybe useful in the future...
         self.Wrapper = self.Database.Wrapper
         self.Brand = self.Wrapper.Brand
         self._cache = {}
