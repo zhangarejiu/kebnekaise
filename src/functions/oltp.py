@@ -140,7 +140,7 @@ class Trader(object):
                 buying = self._buying(chosen, balance)
                 assert buying is not None
                 buy_price, oid = buying
-                time.sleep(3)
+                time.sleep(1)
 
                 if oid not in self.Wrapper.orders():
                     selling = self._selling(chosen, buy_price)
@@ -221,8 +221,8 @@ class Trader(object):
             ticker = self.Toolkit.ticker(self.Brand, symbol)
             assert ticker is not None
 
-            l_ask, h_bid, measures = ticker
-            assert measures[0] > 10 * self.Toolkit.Quota
+            l_ask, h_bid, stats = ticker
+            assert stats[0] > 10
 
             price = l_ask
             amount = self.Toolkit.Quota / price

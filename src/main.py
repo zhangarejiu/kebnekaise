@@ -33,7 +33,7 @@ def operation(wrapper):
         tlk.log(traceback.format_exc(), wrapper)
 
 
-def control(timeout=5):
+def control(timeout=3):
     """
     Start a new process for each enabled (authorized) plugin.
     """

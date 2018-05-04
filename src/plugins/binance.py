@@ -4,6 +4,7 @@ import json
 import time
 import traceback
 
+from decimal import Decimal
 from urllib import parse, request
 
 
@@ -131,9 +132,12 @@ class Wrapper(object):
         """
 
         try:
-            mp = float(self._filters[symbol]['minPrice'])
-            ma = float(self._filters[symbol]['minQty'])
-            mn = float(self._filters[symbol]['minNotional'])
+            price, amount = Decimal(str(price)), Decimal(str(amount))
+
+            mp = Decimal(self._filters[symbol]['minPrice'])
+            ma = Decimal(self._filters[symbol]['minQty'])
+            min_notional = Decimal(self._filters[symbol]['minNotional'])
+            max_notional = abs(price * amount)
 
             r_price, r_amount = price % mp, amount % ma
             if amount > 0:
@@ -144,9 +148,10 @@ class Wrapper(object):
                 amount -= r_amount
 
             s = amount / abs(amount)
-            while abs(price * amount) < mn:
+            while abs(price * amount) < min_notional:
                 amount += s * ma
-            price, amount = round(price, 8), round(amount, 8)
+            while abs(price * amount) > max_notional:
+                amount -= s * ma
 
             tmp = {
                 'price': '{:.8f}'.format(price),
