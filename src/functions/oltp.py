@@ -137,7 +137,7 @@ class Trader(object):
                 self.log('', self)
                 self.log('STARTING TRADE PROCEDURES FOR {} ...'.format(chosen), self)
 
-                buying = self._buying(chosen, -1)
+                buying = self._buying(chosen, balance)
                 assert buying is not None
                 buy_price, oid = buying
                 time.sleep(3)
@@ -203,19 +203,17 @@ class Trader(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def _buying(self, symbol, margin):
+    def _buying(self, symbol, balance):
         """
         This will try to BUY the given symbol, by the best market conditions.
         """
 
-        satoshi = 1E-8
+        fee = 1 - self.Wrapper.Fee / 100
 
         try:
             base, quote = symbol
             assert quote == 'btc'
-            assert type(margin) in [float, int]
 
-            balance = self.Wrapper.balance()
             assert balance is not None
             assert quote in balance
             assert balance[quote][0] > self.Toolkit.Quota
@@ -224,15 +222,9 @@ class Trader(object):
             assert ticker is not None
 
             l_ask, h_bid, measures = ticker
-            if type(margin) == float:
-                price = (1 - margin / 100) * l_ask  # margin in percentage points
-            else:
-                price = l_ask - margin * satoshi  # margin in satoshies
+            assert measures[0] > 10 * self.Toolkit.Quota
 
-            if not margin > 0:
-                assert measures[0] > 10 * self.Toolkit.Quota
-            fee = 1 - self.Wrapper.Fee / 100
-
+            price = l_ask
             amount = self.Toolkit.Quota / price
             if balance[quote][0] <= 2 * self.Toolkit.Quota:
                 amount = fee * balance[quote][0] / price
