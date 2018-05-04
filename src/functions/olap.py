@@ -47,7 +47,7 @@ class Indicator(object):
             self.log('MINOR: 2nd selection is: ' + str(bw), self)
 
             bw = dict(sorted(bw.items(), key=lambda k: k[1])[-5:])
-            bw = [set(bw), {}][len(bw) < 5]
+            bw = [bw, {}][len(bw) < 5]
 
             self.log('', self)
             self.log('FINAL: 3rd selection is: ' + str(bw), self)
@@ -57,7 +57,7 @@ class Indicator(object):
             tt = round(t_delta, 3), round(av_delta, 5)
 
             self.log('...done in {0} s, average {1} s/symbol.'.format(*tt), self)
-            return bw
+            return set(bw)
         except:
             self.log(traceback.format_exc(), self)
 
