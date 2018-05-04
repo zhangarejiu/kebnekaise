@@ -4,6 +4,7 @@ import json
 import time
 import traceback
 
+from calendar import timegm
 from urllib import parse, request
 
 
@@ -20,6 +21,8 @@ class Wrapper(object):
         """
 
         self.Brand, self.Fee = 'bittrex', .25
+        self.fmt = '%Y-%m-%dT%H:%M:%S'
+
         self.Toolkit = toolkit
         self.Key, self.Secret = self.Toolkit.setup(self.Brand)
         self.log = self.Toolkit.log
@@ -41,25 +44,7 @@ class Wrapper(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def balance(self):
-        """
-        """
-
-        try:
-            req = self._request(('account/getbalances?', {},))
-            assert req['success']
-
-            tmp = {'btc': (0., 0.)}
-            for d in req['result']:
-                available = d['Available']
-                on_orders = d['Balance'] - d['Available']
-                if available + on_orders > 0:
-                    tmp[d['Currency'].lower()] = (available, on_orders)
-            return tmp
-        except:
-            self.log(traceback.format_exc(), self)
-
-    def ticker24h(self, symbol):
+    def ohlcv(self, symbol):
         """
         """
 
@@ -71,6 +56,26 @@ class Wrapper(object):
             if req['result'] is not None and len(req['result']) > 0:
                 tmp = req['result'].pop()
                 return tmp['PrevDay'], tmp['High'], tmp['Low'], tmp['Last'], tmp['BaseVolume']
+        except:
+            self.log(traceback.format_exc(), self)
+
+    def history(self, symbol):
+        """
+        """
+
+        try:
+            params = {'market': '-'.join(symbol[::-1]), }
+            req = self._request('public/getmarkethistory?' + parse.urlencode(params), False)
+            assert req['success']
+
+            tmp = [(timegm(time.strptime(d['TimeStamp'][:19], self.fmt)),
+                    [-1, 1][d['OrderType'] == 'BUY'] * d['Quantity'],
+                    d['Price']) for d in req['result']]
+            tmp.reverse()
+            return tmp[-99:]
+
+        except KeyError:
+            return
         except:
             self.log(traceback.format_exc(), self)
 
@@ -95,7 +100,25 @@ class Wrapper(object):
                     return tmp
 
         except KeyError:
-            return {}
+            return
+        except:
+            self.log(traceback.format_exc(), self)
+
+    def balance(self):
+        """
+        """
+
+        try:
+            req = self._request(('account/getbalances?', {},))
+            assert req['success']
+
+            tmp = {'btc': (0., 0.)}
+            for d in req['result']:
+                available = d['Available']
+                on_orders = d['Balance'] - d['Available']
+                if available + on_orders > 0:
+                    tmp[d['Currency'].lower()] = (available, on_orders)
+            return tmp
         except:
             self.log(traceback.format_exc(), self)
 
@@ -121,34 +144,40 @@ class Wrapper(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def orders(self, order_id=None):
+    def orders(self):
         """
-        Some delays are introduced here (with 'time.sleep(delay)') in order to
-        allow the site recognize newly created / canceled orders...
+        """
+
+        time.sleep(7)  # to allow the site recognize newly created / canceled orders...
+
+        try:
+            req = self._request(('market/getopenorders?', {},))
+            assert req['success']
+
+            return {
+                d['OrderUuid']: (
+                    [-1, 1][d['OrderType'] == 'LIMIT_BUY'] * d['QuantityRemaining'],
+                    d['Limit'],
+                    d['Exchange'].lower().partition('-')[::-2]
+                )
+                for d in req['result']
+            }
+        except:
+            self.log(traceback.format_exc(), self)
+
+    def cancel(self, order_id):
+        """
         """
 
         try:
-            delay = 7
+            req = self._request(('market/cancel?', {'uuid': order_id, },))
+            assert req['success']
 
-            if order_id is None:
-                time.sleep(delay)
-                req = self._request(('market/getopenorders?', {},))
-                assert req['success']
+            time.sleep(7)  # to allow the site recognize newly created / canceled orders...
+            return '-' + order_id.upper()
 
-                tmp = {
-                    d['OrderUuid']: (
-                        [-1, 1][d['OrderType'] == 'LIMIT_BUY'] * d['Quantity'],
-                        d['Limit'],
-                        d['Exchange'].lower().partition('-')[::-2]
-                    )
-                    for d in req['result']
-                }
-            else:
-                req = self._request(('market/cancel?', {'uuid': order_id, },))
-                assert req['success']
-                tmp = '-' + order_id.upper()
-                time.sleep(delay)
-            return tmp
+        except AssertionError:
+            return ''
         except:
             self.log(traceback.format_exc(), self)
 
@@ -158,6 +187,7 @@ class Wrapper(object):
 
         calling = locals()
         base_uri = 'https://bittrex.com/api/v1.1/'
+        tmp = {}
 
         try:
             if debug:
@@ -188,6 +218,7 @@ class Wrapper(object):
             if retry > 0:
                 calling['retry'] -= 1
                 self.log('ERROR: retrying {} more time...'.format(retry), self)
+                self.log('(RESPONSE: {})'.format(tmp), self)
                 time.sleep(5)
                 return self._request(**calling)
             else:

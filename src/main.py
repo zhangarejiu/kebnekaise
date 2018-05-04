@@ -4,8 +4,8 @@ import traceback
 
 from multiprocessing import Process
 from .functions import *
-from .plugins import *          # Appears as unused in PyCharm, but simply ignore it.
-from .plugins.sandbox import *  # Appears as unused in PyCharm, but simply ignore it.
+from .plugins import *          # Appears as unused in PyCharm, but simply ignore that.
+from .plugins.sandbox import *  # Appears as unused in PyCharm, but simply ignore that.
 
 
 def operation(wrapper):
@@ -33,7 +33,7 @@ def operation(wrapper):
         tlk.log(traceback.format_exc(), wrapper)
 
 
-def control(timeout=3):
+def control(timeout=5):
     """
     Start a new process for each enabled (authorized) plugin.
     """

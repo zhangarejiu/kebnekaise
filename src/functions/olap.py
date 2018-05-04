@@ -27,116 +27,87 @@ class Indicator(object):
         """
 
         try:
-            self._update()
-
-            self.log('', self)
-            self.log('Selecting top symbols by performance...', self)
-
-            bw = {s: round(1E3 * i) for s, i in self._cache.items()}
-            bw = {s: i for s, i in bw.items() if i > 0}
-            self.log('Financial indexes are: ' + str(bw), self)
-
-            self.Database.query(self, bw)
-            common = self.Database.query(self, 0)
-            #self.log('Common indexes are: ' + str(common), self)
-
-            if len(common) > 1:
-                common = list(zip(*sorted([
-                    (len(v), v) for v in common.values()], key=lambda k: k[0])[-3:]))[1]
-                tmp = set()
-
-                for bw in common:
-                    if len(tmp) > 0:
-                        tmp &= set(bw)
-                    else:
-                        tmp = set(bw)
-
-                    if len(tmp) == 0:
-                        break
-
-                tmp = {s: [] for s in tmp}
-                for bw in common:
-                    for s in tmp:
-                        tmp[s].append(bw[s])
-            else:
-                tmp = {}
-
-            bw = {s: round(sum(l) / len(l)) for s, l in tmp.items()}
-            self.log('Preliminary selection is: ' + str(bw), self)
-
-            bw = dict(sorted(bw.items(), key=lambda k: k[1])[-5:])
-            self.log('Final selection is: ' + str(bw), self)
-            return bw
-        except:
-            self.log(traceback.format_exc(), self)
-
-    def _update(self):
-        """
-        """
-
-        try:
-            if len(self._cache) == 0:
-                self.Database.query(self, self._cache)
-
             symbols = self.Wrapper.symbols()
-            assert symbols is not None
-
             ls = len(symbols)
-            self._cache.update({s: 0. for s in symbols - set(self._cache)})
 
             self.log('', self)
-            self.log('Updating financial indexes for {} symbols...'.format(ls), self)
+            self.log('Selecting top symbols by performance from {} available...'.format(ls), self)
             t_delta = time.time()
 
-            for s in symbols:
-                I = self._index(s)
-                if I is not None:
-                    self._cache[s] = (self._cache[s] + I) / 2
+            bw = {s: int(1E3 * self._major(s)) for s in symbols}
+            bw = {s: i for s, i in bw.items() if i > 5E3}
+
+            self.log('', self)
+            self.log('MAJOR: 1st selection is: ' + str(bw), self)
+
+            bw = {s: int(1E3 * self._minor(s)) for s in bw}
+            bw = {s: i for s, i in bw.items() if i > 3E3}
+
+            self.log('', self)
+            self.log('MINOR: 2nd selection is: ' + str(bw), self)
+
+            bw = dict(sorted(bw.items(), key=lambda k: k[1])[-5:])
+            bw = [set(bw), {}][len(bw) < 5]
+
+            self.log('', self)
+            self.log('FINAL: 3rd selection is: ' + str(bw), self)
 
             t_delta = time.time() - t_delta
             av_delta = t_delta / ls
             tt = round(t_delta, 3), round(av_delta, 5)
-            self.log('...update done in {0} s, average {1} s/symbol.'.format(*tt), self)
+
+            self.log('...done in {0} s, average {1} s/symbol.'.format(*tt), self)
+            return bw
         except:
             self.log(traceback.format_exc(), self)
 
-    def _index(self, symbol):
+    def _major(self, symbol):
         """
         """
 
         try:
-            if self.Toolkit.halt():
-                return
+            assert not self.Toolkit.halt()
 
-            t24h = self.Wrapper.ticker24h(symbol)
-            assert t24h is not None
+            ohlcv = self.Wrapper.ohlcv(symbol)
+            assert ohlcv is not None
 
-            _open, _high, _low, _close, _volume = t24h
-            assert _volume > 100 and _low > 1E-5
+            p_open, p_high, p_low, p_close, volume = ohlcv
+            assert p_low > 1E-5 and volume > 100
 
-            volatility = 100 * (_high / _low - 1)
-            assert volatility < 5
+            variation = 100 * (p_close / p_open - 1)
+            latitude = 100 * (p_high / p_low - 1)
+            volatility = 100 * (abs(latitude / max(variation, 1)) - 1)
 
-            variation = 100 * (_close / _open - 1)
-            assert abs(variation) < 3
+            if variation < 0:
+                return self.Toolkit.smooth(volatility)
+            return self.Toolkit.smooth(1 / volatility)
 
-            book = self.Wrapper.book(symbol, 5)
-            assert book is not None
+        except AssertionError:
+            return 0.
+        except:
+            self.log(traceback.format_exc(), self)
 
-            asks, bids, l_ask, h_bid = 0., 0., 0., 0.
-            for price, amount in book.items():
-                if amount > 0:
-                    l_ask = [price, min(price, l_ask)][l_ask > 0]
-                    asks += price * amount
-                else:
-                    h_bid = [price, max(price, h_bid)][h_bid > 0]
-                    bids += price * amount
+    def _minor(self, symbol):
+        """
+        """
 
-            spread = 100 * (l_ask / h_bid - 1)
-            assert spread < 1
+        try:
+            assert not self.Toolkit.halt()
 
-            trend = 100 * (abs(bids / asks) - 1)
-            return self.Toolkit.smooth(trend)
+            history = self.Wrapper.history(symbol)
+            assert history is not None
+
+            lh = len(history)
+            assert lh > 0
+
+            tmp = {epoch: amount * price
+                   for epoch, amount, price in history}
+            lag = (max(tmp) - min(tmp)) / 3600
+
+            frequency = lh / lag
+            trend = round(sum(tmp.values()) / lag, 8)
+            return self.Toolkit.smooth(trend / frequency)
+
         except AssertionError:
             return 0.
         except:

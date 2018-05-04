@@ -24,7 +24,7 @@ class Toolkit(object):
         self.CParser = ConfigParser(allow_no_value=True)
         self.CParser.read(self.Path + '/bin/conf.ini')
         self.Plugins = self._plugins()
-        self.Orbit = 1  # minutes
+        self.Orbit = 3  # minutes
         self.Quota = 1E-3  # bitcoins
 
         self.Phi = (1 + 5 ** .5) / 2  # https://en.wikipedia.org/wiki/Golden_ratio
@@ -50,23 +50,32 @@ class Toolkit(object):
 
     def ticker(self, brand, symbol):
         """
-        Just returns the current Lowest Ask / Highest Bid for a given market & symbol.
+        Just returns the current Lowest Ask / Highest Bid / Statistics for a given market & symbol.
         """
 
         try:
             wrapper = {plg for plg in self.Plugins if plg.Brand == brand}.pop()
+            book = wrapper.book(symbol, 3)
+            assert book is not None
 
-            asks, bids, book = [], [], wrapper.book(symbol)
-            if book is None:
-                return 0., 0.
+            l_ask, h_bid = max(book), min(book)
+            asks, bids = 0., 0.
 
             for price, amount in book.items():
                 if amount > 0:
-                    asks.append(price)
+                    l_ask = min(l_ask, price)
+                    asks += price * amount
                 else:
-                    bids.append(price)
+                    h_bid = max(h_bid, price)
+                    bids += price * amount
 
-            return min(asks), max(bids)
+            l_ask_depth = int(abs(l_ask * book[l_ask] / self.Quota))
+            h_bid_depth = int(abs(h_bid * book[h_bid] / self.Quota))
+            buy_pressure = 100 * (abs(bids) / asks - 1)
+            return l_ask, h_bid, [l_ask_depth, h_bid_depth, buy_pressure]
+
+        except AssertionError:
+            return
         except:
             self.log(traceback.format_exc())
 
@@ -152,7 +161,6 @@ class Toolkit(object):
 
         try:
             halt_file = self.Path + '/logs/.halt'
-            # time.sleep(1 / 9)
 
             if remove:
                 self.check(halt_file, True)
@@ -232,8 +240,8 @@ class Auditor(object):
             self.log('', self)
             self.log('Starting test of the \'{0}\' API wrapper...'.format(self.Brand.upper()), self)
 
-            quiz = [self._symbols, self._balance, self._ticker24h, self._book,
-                    self._buy, self._orders, self._cancel, self._sell]
+            quiz = [self._symbols, self._ohlcv, self._history, self._book,
+                    self._balance, self._buy, self._orders, self._cancel, self._sell, ]
 
             for func in quiz[:[4, None][fire_mode]]:
                 if self._cache['errors'] == 0 and not self.Toolkit.halt():
@@ -271,6 +279,57 @@ class Auditor(object):
             self.log(traceback.format_exc(), self)
             self._cache['errors'] += 1
 
+    def _ohlcv(self):
+        """
+        Self explanatory...
+        """
+
+        try:
+            self.log('Testing [OHLCV] functionality...', self)
+
+            params = {'symbol': self._cache['symbols'][0]}
+            self.log('Using the following parameters: ' + str(params), self)
+
+            ohlcv = self.Wrapper.ohlcv(**params)
+            self.log('The response was: ' + str(ohlcv), self)
+        except:
+            self.log(traceback.format_exc(), self)
+            self._cache['errors'] += 1
+
+    def _history(self):
+        """
+        Self explanatory...
+        """
+
+        try:
+            self.log('Testing [HISTORY] functionality...', self)
+
+            params = {'symbol': self._cache['symbols'][2], }
+            self.log('Using the following parameters: ' + str(params), self)
+
+            history = self.Wrapper.history(**params)
+            self.log('The response was: ' + str(history), self)
+        except:
+            self.log(traceback.format_exc(), self)
+            self._cache['errors'] += 1
+
+    def _book(self):
+        """
+        Self explanatory...
+        """
+
+        try:
+            self.log('Testing [BOOK] functionality...', self)
+
+            params = {'symbol': self._cache['symbols'][1], 'margin': 3., }
+            self.log('Using the following parameters: ' + str(params), self)
+
+            book = self.Wrapper.book(**params)
+            self.log('The response was: ' + str(book), self)
+        except:
+            self.log(traceback.format_exc(), self)
+            self._cache['errors'] += 1
+
     def _balance(self):
         """
         Self explanatory...
@@ -291,52 +350,19 @@ class Auditor(object):
             self.log(traceback.format_exc(), self)
             self._cache['errors'] += 1
 
-    def _ticker24h(self):
-        """
-        Self explanatory...
-        """
-
-        try:
-            self.log('Testing [TICKER24H] functionality...', self)
-
-            params = {'symbol': self._cache['symbols'][0]}
-            self.log('Using the following parameters: ' + str(params), self)
-
-            ticker24h = self.Wrapper.ticker24h(**params)
-            self.log('The response was: ' + str(ticker24h), self)
-        except:
-            self.log(traceback.format_exc(), self)
-            self._cache['errors'] += 1
-
-    def _book(self):
-        """
-        Self explanatory...
-        """
-
-        try:
-            self.log('Testing [BOOK] functionality...', self)
-
-            params = {'symbol': self._cache['symbols'][1],
-                      'margin': round(self.Toolkit.Phi, 8), }
-            self.log('Using the following parameters: ' + str(params), self)
-
-            book = self.Wrapper.book(**params)
-            self.log('The response was: ' + str(book), self)
-        except:
-            self.log(traceback.format_exc(), self)
-            self._cache['errors'] += 1
-
     def _buy(self):
         """
         Self explanatory...
         """
 
         try:
-            self.log('Testing [FIRE] functionality in [BUY] mode...', self)
+            self.log('Testing [FIRE:buy] functionality...', self)
 
-            params = {'symbol': self._cache['symbols'][2]}
-            l_ask, h_bid = self.Toolkit.ticker(self.Brand, params['symbol'])
+            params = {'symbol': self._cache['symbols'][3]}
+            ticker = self.Toolkit.ticker(self.Brand, params['symbol'])
+            assert ticker is not None
 
+            l_ask, h_bid, _ = ticker
             price = .95 * h_bid
             amount = self.Toolkit.Quota / price
             params.update({'amount': round(amount, 8), 'price': round(price, 8), })
@@ -344,11 +370,12 @@ class Auditor(object):
             self.log('Putting a BUY order with parameters: ' + str(params), self)
             oid = self.Wrapper.fire(**params)
 
-            if oid != 0:
+            if oid is not None:
                 self._cache['orders'].append(oid)
                 self.log('The response was: ' + str(oid), self)
             else:
                 self.log('Internal error or insufficient funds to make BUY tests...', self)
+                self._cache['errors'] += 1
         except:
             self.log(traceback.format_exc(), self)
             self._cache['errors'] += 1
@@ -378,7 +405,9 @@ class Auditor(object):
             for oid in self._cache['orders']:
                 params = {'order_id': oid}
                 self.log('Using the following parameters: ' + str(params), self)
-                self.log('The response was: ' + str(self.Wrapper.orders(**params)), self)
+
+                C = self.Wrapper.cancel(**params)
+                self.log('The response was: ' + str(C), self)
 
             orders = list(self.Wrapper.orders().items())
             self.log('(Current open orders are: {0})'.format(orders), self)
@@ -392,11 +421,13 @@ class Auditor(object):
         """
 
         try:
-            self.log('Testing [FIRE] functionality in [SELL] mode...', self)
+            self.log('Testing [FIRE:sell] functionality...', self)
 
             params = {'symbol': ('btc', 'usdt')}
-            l_ask, h_bid = self.Toolkit.ticker(self.Brand, params['symbol'])
+            ticker = self.Toolkit.ticker(self.Brand, params['symbol'])
+            assert ticker is not None
 
+            l_ask, h_bid, _ = ticker
             price = 1.05 * l_ask
             amount = -1 * self.Toolkit.Quota
             params.update({'amount': round(amount, 8), 'price': round(price, 8), })
@@ -404,7 +435,7 @@ class Auditor(object):
             self.log('Putting a SELL order with parameters: ' + str(params), self)
             oid = self.Wrapper.fire(**params)
 
-            if oid != 0:
+            if oid is not None:
                 self._cache['orders'].append(oid)
                 self.log('The response was: ' + str(oid), self)
 
@@ -413,9 +444,10 @@ class Auditor(object):
 
                 self.log('', self)
                 self.log('Canceling order # {}...'.format(oid), self)
-                self.Wrapper.orders(oid)
+                self.Wrapper.cancel(oid)
             else:
                 self.log('Internal error or insufficient funds to make SELL tests...', self)
+                self._cache['errors'] += 1
 
             orders = list(self.Wrapper.orders().items())
             self.log('(Current open orders are: {})'.format(orders), self)

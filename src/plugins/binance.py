@@ -20,6 +20,7 @@ class Wrapper(object):
         """
 
         self.Brand, self.Fee = 'binance', .1
+
         self.Toolkit = toolkit
         self.Key, self.Secret = self.Toolkit.setup(self.Brand)
         self.log = self.Toolkit.log
@@ -47,25 +48,7 @@ class Wrapper(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def balance(self):
-        """
-        """
-
-        try:
-            req = self._request(('api/v3/account', {'method': 'GET'},))
-            assert req is not None
-
-            tmp = {'btc': (0., 0.)}
-            for d in req['balances']:
-                available = float(d['free'])
-                on_orders = float(d['locked'])
-                if available + on_orders > 0:
-                    tmp[d['asset'].lower()] = (available, on_orders)
-            return tmp
-        except:
-            self.log(traceback.format_exc(), self)
-
-    def ticker24h(self, symbol):
+    def ohlcv(self, symbol):
         """
         """
 
@@ -79,6 +62,25 @@ class Wrapper(object):
                 req['lowPrice']), float(
                 req['lastPrice']), float(
                 req['quoteVolume'])
+        except:
+            self.log(traceback.format_exc(), self)
+
+    def history(self, symbol):
+        """
+        """
+
+        try:
+            req = self._request('api/v1/trades?symbol=' + ''.join(symbol).upper()
+                                + '&limit=100', False)
+            assert req is not None
+
+            tmp = [(int(d['time'] / 1E3),
+                    [1, -1][d['isBuyerMaker']] * float(d['qty']),
+                    float(d['price'])) for d in req]
+            return tmp[-99:]
+
+        except KeyError:
+            return
         except:
             self.log(traceback.format_exc(), self)
 
@@ -102,7 +104,25 @@ class Wrapper(object):
                 return tmp
 
         except KeyError:
-            return {}
+            return
+        except:
+            self.log(traceback.format_exc(), self)
+
+    def balance(self):
+        """
+        """
+
+        try:
+            req = self._request(('api/v3/account', {'method': 'GET'},))
+            assert req is not None
+
+            tmp = {'btc': (0., 0.)}
+            for d in req['balances']:
+                available = float(d['free'])
+                on_orders = float(d['locked'])
+                if available + on_orders > 0:
+                    tmp[d['asset'].lower()] = (available, on_orders)
+            return tmp
         except:
             self.log(traceback.format_exc(), self)
 
@@ -115,10 +135,15 @@ class Wrapper(object):
             ma = float(self._filters[symbol]['minQty'])
             mn = float(self._filters[symbol]['minNotional'])
 
-            price = mp * int(price / mp)
-            amount = ma * int(amount / ma)
-            s = amount / abs(amount)
+            r_price, r_amount = price % mp, amount % ma
+            if amount > 0:
+                price -= r_price
+                amount += 1 - r_amount
+            else:
+                price += 1 - r_price
+                amount -= r_amount
 
+            s = amount / abs(amount)
             while abs(price * amount) < mn:
                 amount += s * ma
             price, amount = round(price, 8), round(amount, 8)
@@ -146,41 +171,49 @@ class Wrapper(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def orders(self, order_id=None):
+    def orders(self):
         """
-        Some delays are introduced here (with 'time.sleep(delay)') in order to
-        allow the site recognize newly created / canceled orders...
+        """
+
+        time.sleep(5)  # to allow the site recognize newly created / canceled orders...
+
+        try:
+            translate = {''.join(s).upper(): s for s in self._filters}
+            req = self._request(('api/v3/openOrders', {'method': 'GET'},))
+            assert req is not None
+
+            tmp = {
+                int(d['clientOrderId']): (
+                    [-1, 1][d['side'] == 'BUY'] * (float(d['origQty']) - float(d['executedQty'])),
+                    float(d['price']),
+                    translate[d['symbol']]
+                )
+                for d in req
+            }
+
+            self._orders.update({oid: s for oid, (a, p, s) in tmp.items()})
+            return tmp
+        except:
+            self.log(traceback.format_exc(), self)
+
+    def cancel(self, order_id):
+        """
         """
 
         try:
-            delay = 5
-            translate = {''.join(s).upper(): s for s in self._filters}
+            params = {
+                'symbol': ''.join(self._orders[order_id]).upper(),
+                'origClientOrderId': order_id,
+                'method': 'DELETE',
+            }
+            req = self._request(('api/v3/order', params,))
+            assert req is not None
 
-            if order_id is None:
-                time.sleep(delay)
-                req = self._request(('api/v3/openOrders', {'method': 'GET'},))
-                assert req is not None
+            time.sleep(5)  # to allow the site recognize newly created / canceled orders...
+            return -order_id
 
-                tmp = {
-                    int(d['clientOrderId']): (
-                        [-1, 1][d['side'] == 'BUY'] * float(d['origQty']),
-                        float(d['price']),
-                        translate[d['symbol']]
-                    )
-                    for d in req
-                }
-                self._orders.update({oid: s for oid, (a, p, s) in tmp.items()})
-            else:
-                params = {
-                    'symbol': ''.join(self._orders[order_id]).upper(),
-                    'origClientOrderId': order_id,
-                    'method': 'DELETE',
-                }
-                req = self._request(('api/v3/order', params,))
-                assert req is not None
-                tmp = -order_id
-                time.sleep(delay)
-            return tmp
+        except AssertionError:
+            return 0
         except:
             self.log(traceback.format_exc(), self)
 
@@ -190,6 +223,7 @@ class Wrapper(object):
 
         calling = locals()
         base_uri = 'https://api.binance.com/'
+        tmp = {}
 
         try:
             if debug:
@@ -223,6 +257,7 @@ class Wrapper(object):
             if retry > 0:
                 calling['retry'] -= 1
                 self.log('ERROR: retrying {} more time...'.format(retry), self)
+                self.log('(RESPONSE: {})'.format(tmp), self)
                 time.sleep(5)
                 return self._request(**calling)
             else:

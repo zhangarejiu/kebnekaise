@@ -4,6 +4,7 @@ import json
 import time
 import traceback
 
+from calendar import timegm
 from urllib import parse, request
 
 
@@ -20,6 +21,8 @@ class Wrapper(object):
         """
 
         self.Brand, self.Fee = 'poloniex', .25
+        self.fmt = '%Y-%m-%d %H:%M:%S'
+
         self.Toolkit = toolkit
         self.Key, self.Secret = self.Toolkit.setup(self.Brand)
         self.log = self.Toolkit.log
@@ -41,25 +44,7 @@ class Wrapper(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def balance(self):
-        """
-        """
-
-        try:
-            req = self._request(('tradingApi', {'command': 'returnCompleteBalances'},))
-            assert req is not None
-
-            tmp = {'btc': (0., 0.)}
-            for key in req:
-                available = float(req[key]['available'])
-                on_orders = float(req[key]['onOrders'])
-                if available + on_orders > 0:
-                    tmp[key.lower()] = (available, on_orders)
-            return tmp
-        except:
-            self.log(traceback.format_exc(), self)
-
-    def ticker24h(self, symbol):
+    def ohlcv(self, symbol):
         """
         """
 
@@ -73,6 +58,26 @@ class Wrapper(object):
             tmp = [(d['open'], d['high'], d['low'], d['close'], d['volume']) for d in req]
             tmp = list(zip(*tmp))
             return tmp[0][0], max(tmp[1]), min(tmp[2]), tmp[3][-1], sum(tmp[4])
+        except:
+            self.log(traceback.format_exc(), self)
+
+    def history(self, symbol):
+        """
+        """
+
+        try:
+            req = self._request('public?command=returnTradeHistory&currencyPair='
+                                + '_'.join(symbol[::-1]).upper(), False)
+            assert req is not None
+
+            tmp = [(timegm(time.strptime(d['date'], self.fmt)),
+                    [-1, 1][d['type'] == 'buy'] * float(d['amount']),
+                    float(d['rate'])) for d in req]
+            tmp.reverse()
+            return tmp[-99:]
+
+        except KeyError:
+            return
         except:
             self.log(traceback.format_exc(), self)
 
@@ -96,7 +101,25 @@ class Wrapper(object):
                 return tmp
 
         except KeyError:
-            return {}
+            return
+        except:
+            self.log(traceback.format_exc(), self)
+
+    def balance(self):
+        """
+        """
+
+        try:
+            req = self._request(('tradingApi', {'command': 'returnCompleteBalances'},))
+            assert req is not None
+
+            tmp = {'btc': (0., 0.)}
+            for key in req:
+                available = float(req[key]['available'])
+                on_orders = float(req[key]['onOrders'])
+                if available + on_orders > 0:
+                    tmp[key.lower()] = (available, on_orders)
+            return tmp
         except:
             self.log(traceback.format_exc(), self)
 
@@ -120,37 +143,43 @@ class Wrapper(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def orders(self, order_id=None):
+    def orders(self):
         """
-        Some delays are introduced here (with 'time.sleep(delay)') in order to
-        allow the site recognize newly created / canceled orders...
+        """
+
+        time.sleep(5)  # to allow the site recognize newly created / canceled orders...
+
+        try:
+            req = self._request(('tradingApi', {
+                'command': 'returnOpenOrders', 'currencyPair': 'all'},))
+            assert req is not None
+
+            return {
+                int(d['orderNumber']): (
+                    [-1, 1][d['type'] == 'buy'] * float(d['amount']),
+                    float(d['rate']),
+                    pair_str.lower().partition('_')[::-2]
+                )
+                for pair_str, orders_list in req.items()
+                for d in orders_list if len(orders_list) > 0
+            }
+        except:
+            self.log(traceback.format_exc(), self)
+
+    def cancel(self, order_id):
+        """
         """
 
         try:
-            delay = 5
+            req = self._request(('tradingApi', {
+                'command': 'cancelOrder', 'orderNumber': order_id, },))
+            assert req is not None
 
-            if order_id is None:
-                time.sleep(delay)
-                req = self._request(('tradingApi', {
-                    'command': 'returnOpenOrders', 'currencyPair': 'all'},))
-                assert req is not None
+            time.sleep(5)  # to allow the site recognize newly created / canceled orders...
+            return -order_id
 
-                tmp = {
-                    int(d['orderNumber']): (
-                        [-1, 1][d['type'] == 'buy'] * float(d['amount']),
-                        float(d['rate']),
-                        pair_str.lower().partition('_')[::-2]
-                    )
-                    for pair_str, orders_list in req.items()
-                    for d in orders_list if len(orders_list) > 0
-                }
-            else:
-                req = self._request(('tradingApi', {
-                    'command': 'cancelOrder', 'orderNumber': order_id, },))
-                assert req is not None
-                tmp = -order_id
-                time.sleep(delay)
-            return tmp
+        except AssertionError:
+            return 0
         except:
             self.log(traceback.format_exc(), self)
 
@@ -160,6 +189,7 @@ class Wrapper(object):
 
         calling = locals()
         base_uri = 'https://poloniex.com/'
+        tmp = {}
 
         try:
             if debug:
@@ -189,6 +219,7 @@ class Wrapper(object):
             if retry > 0:
                 calling['retry'] -= 1
                 self.log('ERROR: retrying {} more time...'.format(retry), self)
+                self.log('(RESPONSE: {})'.format(tmp), self)
                 time.sleep(5)
                 return self._request(**calling)
             else:
