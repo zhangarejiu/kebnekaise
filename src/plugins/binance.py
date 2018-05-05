@@ -41,7 +41,9 @@ class Wrapper(object):
                 self._filters[s].update(s_dict['filters'][1])
                 self._filters[s].update(s_dict['filters'][2])
                 del self._filters[s]['filterType']
+
             tmp = set(self._filters)
+            tmp = {s for s in tmp if float(self._filters[s]['stepSize']) < 1}
 
             if btc_only:
                 return {s for s in tmp if s[1] == 'btc'}
@@ -127,7 +129,7 @@ class Wrapper(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def fire(self, amount, price, symbol):
+    def fire(self, amount, price, symbol, simulate=False):
         """
         """
 
@@ -164,6 +166,9 @@ class Wrapper(object):
             else:
                 tmp.update({'quantity': '{:.8f}'.format(-amount), 'side': 'SELL', })
 
+            if simulate:
+                return price, amount
+
             req = self._request(('api/v3/order', tmp,))
             assert req is not None
 
@@ -173,11 +178,11 @@ class Wrapper(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def orders(self):
+    def orders(self, delay=5):
         """
         """
 
-        time.sleep(5)  # to allow the site recognize newly created / canceled orders...
+        time.sleep(delay)  # to allow the site recognize newly created / canceled orders...
 
         try:
             translate = {''.join(s).upper(): s for s in self._filters}

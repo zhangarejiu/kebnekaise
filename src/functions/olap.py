@@ -1,3 +1,4 @@
+import random
 import time
 import traceback
 
@@ -21,14 +22,17 @@ class Indicator(object):
         self.log = self.Toolkit.log
         self.log(self.Toolkit.Greeting, self)
 
-    def broadway(self):
+    def broadway(self, roof=47):
         """
         https://www.pokernews.com/pokerterms/broadway.htm
         """
 
         try:
             symbols = self.Wrapper.symbols()
+
             ls = len(symbols)
+            if ls > roof:
+                symbols, ls = random.sample(symbols, roof), roof
 
             self.log('', self)
             self.log('Selecting top symbols by performance from {} available...'.format(ls), self)

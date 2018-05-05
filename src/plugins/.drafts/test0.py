@@ -2188,63 +2188,39 @@ for s_dict in filters['symbols']:
     _filters[s].update(s_dict['filters'][2])
     del _filters[s]['filterType']
 
-Quota = 1E-3
-fee = 1 - .1 / 100
-
 ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### #####
-# BUY
 
-symbol = 'icx', 'btc'
-balance = {'btc': (0.00158948, 0.0), 'bnb': (0.01327891, 0.0)}
-ticker = 0.0004367, 0.0004357, [24, 24, 163.00494280015667]
+#params = {'price': 0.000378, 'amount': 4.11351852, 'symbol': ('ark', 'btc')}
+#params = {'price': 0.00037913, 'amount': -4.11588, 'symbol': ('ark', 'btc')}
 
-l_ask, h_bid, measures = ticker
-assert measures[0] > 10
-base, quote = symbol
+#params = {'price': 1.406e-05, 'amount': 110.56187767, 'symbol': ('tnt', 'btc')}
+#params = {'price': 1.41e-05, 'amount': -110.889, 'symbol': ('tnt', 'btc')}
 
-price = l_ask
-amount = Quota / price
-if balance[quote][0] <= 2 * Quota:
-    c = Quota / 10
-    amount = (balance[quote][0] - c) / price
-
-##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### #####
-# SELL
-
-price, amount = (1 + .3 / 100) * 0.0004367, -0.000001
-params = {'amount': round(amount, 8), 'price': round(price, 8), 'symbol': symbol, }
+#params = {'price': 0.001199, 'amount': 1.28806505, 'symbol': ('mco', 'btc')}
+params = {'price': 0.0012026, 'amount': -1.28871, 'symbol': ('mco', 'btc')}
 
 ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### ##### #####
 
-print('params = ' + str(params))
-
-price, amount = Decimal(str(price)), Decimal(str(amount))
-print('[price, amount] = ' + str([price, amount]))
+amount = Decimal(str(params['amount']))
+price = Decimal(str(params['price']))
+symbol = params['symbol']
 
 min_price = Decimal(_filters[symbol]['minPrice'])
 min_amount = Decimal(_filters[symbol]['minQty'])
 min_notional = Decimal(_filters[symbol]['minNotional'])
-print('[min_price, min_amount, min_notional] = ' + str([min_price, min_amount, min_notional]))
 
 r_price, r_amount = price % min_price, amount % min_amount
-print('[r_price, r_amount] = ' + str([r_price, r_amount]))
-
 if amount > 0:
     price -= r_price
     amount += min_amount - r_amount
 else:
     price += min_price - r_price
     amount -= r_amount
-print('[price, amount] = ' + str([price, amount]))
 
 s = [-1, 1][amount > 0]
 while abs(price * amount) < min_notional:
     amount += s * min_amount
-    print('[UPDATED] amount = ' + str(amount))
-print('[price, amount] = ' + str([price, amount]))
-
 price, amount = float(price), float(amount)
-print('[price, amount] = ' + str([price, amount]))
 
 tmp = {
     'price': '{:.8f}'.format(price),
@@ -2254,10 +2230,10 @@ tmp = {
     'timeInForce': 'GTC',
     'method': 'POST',
 }
-print('tmp = ' + str(tmp))
-
 if amount > 0:
     tmp.update({'quantity': '{:.8f}'.format(amount), 'side': 'BUY', })
 else:
     tmp.update({'quantity': '{:.8f}'.format(-amount), 'side': 'SELL', })
-print('tmp = ' + str(tmp))
+
+print()
+print(tmp)

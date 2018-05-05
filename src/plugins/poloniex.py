@@ -123,7 +123,7 @@ class Wrapper(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def fire(self, amount, price, symbol):
+    def fire(self, amount, price, symbol, simulate=False):
         """
         """
 
@@ -136,6 +136,9 @@ class Wrapper(object):
             else:
                 tmp.update({'amount': -round(amount, 8), 'command': 'sell', })
 
+            if simulate:
+                return tmp['rate'], tmp['quantity']
+
             req = self._request(('tradingApi', tmp,))
             assert req is not None
 
@@ -143,11 +146,11 @@ class Wrapper(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def orders(self):
+    def orders(self, delay=5):
         """
         """
 
-        time.sleep(5)  # to allow the site recognize newly created / canceled orders...
+        time.sleep(delay)  # to allow the site recognize newly created / canceled orders...
 
         try:
             req = self._request(('tradingApi', {

@@ -38,7 +38,7 @@ class Trader(object):
                 broadway = self.Indicator.broadway()
                 assert broadway is not None
 
-                balance, holdings = report
+                balance, holdings, _ = report
                 if holdings[0] > self.Toolkit.Quota:
                     if len(broadway) > 0:
                         goal = self._chase(balance, self._forecast(broadway))
@@ -82,6 +82,9 @@ class Trader(object):
             balance = self.Wrapper.balance()
             assert balance is not None
 
+            orders = self.Wrapper.orders(0)
+            assert orders is not None
+
             nakamoto = self.Toolkit.ticker(self.Brand, ('btc', 'usdt'))
             assert nakamoto is not None
 
@@ -108,7 +111,8 @@ class Trader(object):
             self.log('', self)
             self.log('REPORT: Your current BALANCE is: ' + str(balance), self)
             self.log('That\'s equals approximately to BTC {0} (USD {1}).'.format(*holdings), self)
-            return balance, holdings
+            self.log('Your currently open orders are: ' + str(orders), self)
+            return balance, holdings, orders
 
         except AssertionError:
             self.log('', self)
@@ -134,6 +138,9 @@ class Trader(object):
                 buying = self._buying(chosen, balance)
                 assert buying is not None
                 buy_price, oid = buying
+
+                self.log('', self)
+                self.log('The effective BUY price was: ' + str(buy_price), self)
                 time.sleep(1)
 
                 if oid not in self.Wrapper.orders():
@@ -141,6 +148,8 @@ class Trader(object):
                     assert selling is not None
                     sell_price, oid = selling
 
+                    self.log('', self)
+                    self.log('The effective SELL price was: ' + str(sell_price), self)
                     profit_goal = round(100 * (sell_price / buy_price - 1), 8)
                 else:
                     self.log('', self)
@@ -229,7 +238,7 @@ class Trader(object):
 
             self.log('', self)
             self.log('Current TICKER is: ' + str(ticker), self)
-            self.log('Trying to BUY {0} by using parameters: {1}...'.format(symbol, params), self)
+            self.log('Trying to BUY {0} by using parameters: {1} ...'.format(symbol, params), self)
 
             buying = self.Wrapper.fire(**params)
             assert buying is not None
@@ -264,7 +273,7 @@ class Trader(object):
 
             self.log('', self)
             self.log('REFERENCE price was: ' + str(referential), self)
-            self.log('Trying to SELL {0} by using parameters: {1}...'.format(symbol, params), self)
+            self.log('Trying to SELL {0} by using parameters: {1} ...'.format(symbol, params), self)
 
             selling = self.Wrapper.fire(**params)
             assert selling is not None
