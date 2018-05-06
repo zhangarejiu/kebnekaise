@@ -16,6 +16,7 @@ class Trader(object):
         self.Database = self.Indicator.Database  # maybe useful in the future...
         self.Wrapper = self.Indicator.Wrapper
         self.Brand = self.Wrapper.Brand
+        self._tracked = {}
 
         self.Toolkit = self.Wrapper.Toolkit
         self.log = self.Toolkit.log
@@ -57,7 +58,7 @@ class Trader(object):
 
                 t_delta = round(time.time() - t_delta, 3)
                 self.log('', self)
-                self.log('...probing done in {0} seconds.'.format(t_delta), self)
+                self.log('...probing done in {} seconds.'.format(t_delta), self)
 
                 self.log('', self)
                 self.log('[ END: TRADE ]', self)
@@ -82,7 +83,7 @@ class Trader(object):
             balance = self.Wrapper.balance()
             assert balance is not None
 
-            orders = self.Wrapper.orders(0)
+            orders = self._flush()
             assert orders is not None
 
             nakamoto = self.Toolkit.ticker(self.Brand, ('btc', 'usdt'))
@@ -117,6 +118,52 @@ class Trader(object):
         except AssertionError:
             self.log('', self)
             self.log('Unexpected error in "_report()" function: moving forward...', self)
+            return
+        except:
+            self.log(traceback.format_exc(), self)
+
+    def _flush(self, stop_loss_minutes=60):
+        """
+        Checking for rotten (unprofitable) orders.
+        """
+
+        try:
+            self.log('', self)
+            self.log('Checking for outdated (1+ hour old) orders...', self)
+            t_delta = time.time()
+
+            orders = self.Wrapper.orders(0)
+            assert orders is not None
+
+            c = 0
+            for oid, (amount, price, symbol) in orders.items():
+                if oid in self._tracked:
+                    if t_delta - self._tracked[oid] > 60 * stop_loss_minutes:
+                        self.log('', self)
+                        self.log('Outdated order # {} found, cancelling now...'.format(oid), self)
+                        self.Wrapper.cancel(oid)
+
+                        ticker = self.Toolkit.ticker(self.Brand, symbol)
+                        if ticker is not None:
+                            self._selling(symbol, .95 * ticker[1])
+                        else:
+                            self._selling(symbol, .95 * price)
+                        c += 1
+                else:
+                    self._tracked[oid] = t_delta
+
+            if c > 0:
+                orders = self.Wrapper.orders()
+                assert orders is not None
+            t_delta = round(time.time() - t_delta, 5)
+
+            self.log('', self)
+            self.log('...check done in {} seconds.'.format(t_delta), self)
+            return orders
+
+        except AssertionError:
+            self.log('', self)
+            self.log('Unexpected error in "_flush()" function: moving forward...', self)
             return
         except:
             self.log(traceback.format_exc(), self)
@@ -190,10 +237,10 @@ class Trader(object):
                     spread = 100 * (l_ask / h_bid - 1)
 
                     requirements = [
-                        h_bid_depth > l_ask_depth > 10,
+                        h_bid_depth > l_ask_depth > 5,
                         spread < 1 - self.Wrapper.Fee,
-                        buy_pressure > 100,
-                        ]
+                        buy_pressure > 100
+                    ]
                     if False not in requirements:
                         forecast[symbol] = int(buy_pressure / spread)
 

@@ -134,8 +134,10 @@ class Wrapper(object):
         """
 
         try:
-            price, amount = Decimal(str(price)), Decimal(str(amount))
+            if len(self._filters) == 0:
+                self.symbols()
 
+            price, amount = Decimal(str(price)), Decimal(str(amount))
             min_price = Decimal(self._filters[symbol]['minPrice'])
             min_amount = Decimal(self._filters[symbol]['minQty'])
             min_notional = Decimal(self._filters[symbol]['minNotional'])
@@ -185,6 +187,9 @@ class Wrapper(object):
         time.sleep(delay)  # to allow the site recognize newly created / canceled orders...
 
         try:
+            if len(self._filters) == 0:
+                self.symbols()
+
             translate = {''.join(s).upper(): s for s in self._filters}
             req = self._request(('api/v3/openOrders', {'method': 'GET'},))
             assert req is not None

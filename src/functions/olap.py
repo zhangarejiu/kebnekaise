@@ -39,13 +39,13 @@ class Indicator(object):
             t_delta = time.time()
 
             bw = {s: int(1E3 * self._major(s)) for s in symbols}
-            bw = {s: i for s, i in bw.items() if i > 5E3}
+            bw = {s: i for s, i in bw.items() if i > 0}
 
             self.log('', self)
             self.log('MAJOR: 1st selection is: ' + str(bw), self)
 
             bw = {s: int(1E3 * self._minor(s)) for s in bw}
-            bw = {s: i for s, i in bw.items() if i > 3E3}
+            bw = {s: i for s, i in bw.items() if i > 0}
 
             self.log('', self)
             self.log('MINOR: 2nd selection is: ' + str(bw), self)
@@ -78,9 +78,9 @@ class Indicator(object):
             p_open, p_high, p_low, p_close, volume = ohlcv
             assert p_low > 1E-5 and volume > 100
 
-            variation = 100 * (p_close / p_open - 1)
             latitude = 100 * (p_high / p_low - 1)
-            volatility = 100 * (abs(latitude / max(variation, 1)) - 1)
+            variation = 100 * (p_close / p_open - 1)
+            volatility = 1 + latitude - variation
 
             if variation < 0:
                 return self.Toolkit.smooth(volatility)
