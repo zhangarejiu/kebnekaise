@@ -212,7 +212,7 @@ class Trader(object):
 
         except AssertionError:
             self.log('', self)
-            self.log('Unexpected error while trading {}, sorry...', self)
+            self.log('Unexpected error while trading {}, sorry...'.format(chosen), self)
 
             orders = list(self.Wrapper.orders().items())
             self.log('(Current open orders are: {})'.format(orders), self)
