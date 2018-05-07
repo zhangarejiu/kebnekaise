@@ -122,14 +122,14 @@ class Trader(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def _flush(self, stop_loss_minutes=90):
+    def _flush(self, stop_loss=90):
         """
         Checking for rotten (unprofitable) orders.
         """
 
         try:
             self.log('', self)
-            self.log('Checking for outdated (1+ hour old) orders...', self)
+            self.log('Checking for outdated ({}+ minutes old) orders...'.format(stop_loss), self)
             t_delta = time.time()
 
             orders = self.Wrapper.orders(0)
@@ -138,7 +138,7 @@ class Trader(object):
             c = 0
             for oid, (amount, price, symbol) in orders.items():
                 if oid in self._tracked:
-                    if t_delta - self._tracked[oid] > 60 * stop_loss_minutes:
+                    if t_delta - self._tracked[oid] > 60 * stop_loss:
                         self.log('', self)
                         self.log('Outdated order # {} found, cancelling now...'.format(oid), self)
                         self.Wrapper.cancel(oid)
