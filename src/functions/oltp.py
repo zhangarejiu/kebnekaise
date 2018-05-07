@@ -16,7 +16,7 @@ class Trader(object):
         self.Database = self.Indicator.Database  # maybe useful in the future...
         self.Wrapper = self.Indicator.Wrapper
         self.Brand = self.Wrapper.Brand
-        self._tracked = {}
+        self._tracked, self._depth_threshold = {}, 3
 
         self.Toolkit = self.Wrapper.Toolkit
         self.log = self.Toolkit.log
@@ -237,9 +237,9 @@ class Trader(object):
                     spread = 100 * (l_ask / h_bid - 1)
 
                     requirements = [
-                        h_bid_depth > l_ask_depth > 3,
+                        h_bid_depth > l_ask_depth > self._depth_threshold,
+                        spread < 1 - self.Wrapper.Fee,
                         buy_pressure > 100,
-                        spread < .7,
                     ]
                     if False not in requirements:
                         forecast[symbol] = int(buy_pressure / spread)
@@ -274,7 +274,7 @@ class Trader(object):
             assert ticker is not None
 
             l_ask, h_bid, stats = ticker
-            assert stats[0] > 10
+            assert stats[0] > self._depth_threshold
 
             price = l_ask
             amount = self.Toolkit.Quota / price
