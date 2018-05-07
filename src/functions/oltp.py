@@ -122,7 +122,7 @@ class Trader(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def _flush(self, stop_loss_minutes=60):
+    def _flush(self, stop_loss_minutes=90):
         """
         Checking for rotten (unprofitable) orders.
         """
