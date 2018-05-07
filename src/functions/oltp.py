@@ -187,17 +187,19 @@ class Trader(object):
                 buy_price, oid = buying
 
                 self.log('', self)
-                self.log('The effective BUY price was: ' + str(buy_price), self)
+                self.log('The effective BUY price was: {:.8f}'.format(buy_price), self)
                 time.sleep(1)
 
                 if oid not in self.Wrapper.orders():
-                    selling = self._selling(chosen, buy_price)
+                    fix = 1 + 2 * self.Wrapper.Fee / 100
+
+                    selling = self._selling(chosen, fix * buy_price)
                     assert selling is not None
                     sell_price, oid = selling
 
                     self.log('', self)
-                    self.log('The effective SELL price was: ' + str(sell_price), self)
-                    profit_goal = round(100 * (sell_price / buy_price - 1), 8)
+                    self.log('The effective SELL price was: {:.8f}'.format(sell_price), self)
+                    profit_goal = round(100 * (sell_price / buy_price - fix), 8)
                 else:
                     self.log('', self)
                     self.log('BUY routine FAILED, sorry...', self)
@@ -257,7 +259,7 @@ class Trader(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def _buying(self, symbol, balance):
+    def _buying(self, symbol, balance, margin=0):
         """
         This will try to BUY the given symbol, by the best market conditions.
         """
@@ -276,7 +278,7 @@ class Trader(object):
             l_ask, h_bid, stats = ticker
             assert stats[0] > self._depth_threshold
 
-            price = l_ask
+            price = (1 - margin / 100) * l_ask
             amount = self.Toolkit.Quota / price
             if balance[quote][0] <= 2 * self.Toolkit.Quota:
                 c = self.Toolkit.Quota / 10
@@ -298,7 +300,7 @@ class Trader(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def _selling(self, symbol, referential):
+    def _selling(self, symbol, referential, margin=.1):
         """
         This will try to SELL the given symbol, by the best market conditions.
         """
@@ -314,7 +316,6 @@ class Trader(object):
             amount = -1 * balance[base][0]
             assert abs(amount) > 0
 
-            margin = 2 * self.Wrapper.Fee + .1
             price = (1 + margin / 100) * referential
             params = {'amount': round(amount, 8), 'price': round(price, 8), 'symbol': symbol, }
 

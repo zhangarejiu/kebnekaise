@@ -11,7 +11,6 @@ from urllib import parse, request
 class Wrapper(object):
     """
     Reference:
-
     https://poloniex.com/support/api/
     """
 

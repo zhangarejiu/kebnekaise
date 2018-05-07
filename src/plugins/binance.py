@@ -10,8 +10,14 @@ from urllib import parse, request
 
 class Wrapper(object):
     """
-    Reference:
+    IMPORTANT: in order to get nice profits from this website, just do this FIRST:
+        1. GO to [https://www.binance.com/userCenter/myAccount.html] and get the option "Using BNB to
+            pay for fees" checked ON;
+        2. BUY enough of the BNB_BTC symbol (to "pay for fees", obviously);
+        3. NEVER trade the symbol BNB_BTC (this option is disabled in the "symbols ()" method already) or
+            you'll lose that "fees payer" balance!
 
+    Reference:
     https://github.com/binance-exchange/binance-official-api-docs
     """
 
