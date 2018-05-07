@@ -135,7 +135,7 @@ class Trader(object):
             orders = self.Wrapper.orders(0)
             assert orders is not None
 
-            c = 0
+            c, k = 0, .97
             for oid, (amount, price, symbol) in orders.items():
                 if oid in self._tracked:
                     if t_delta - self._tracked[oid] > 60 * stop_loss:
@@ -145,9 +145,9 @@ class Trader(object):
 
                         ticker = self.Toolkit.ticker(self.Brand, symbol)
                         if ticker is not None:
-                            self._selling(symbol, .95 * ticker[1])
+                            self._selling(symbol, k * ticker[1])
                         else:
-                            self._selling(symbol, .95 * price)
+                            self._selling(symbol, k * price)
                         c += 1
                 else:
                     self._tracked[oid] = t_delta
@@ -237,9 +237,9 @@ class Trader(object):
                     spread = 100 * (l_ask / h_bid - 1)
 
                     requirements = [
-                        h_bid_depth > l_ask_depth > 5,
-                        spread < 1 - self.Wrapper.Fee,
-                        buy_pressure > 100
+                        h_bid_depth > l_ask_depth > 3,
+                        buy_pressure > 100,
+                        spread < .5,
                     ]
                     if False not in requirements:
                         forecast[symbol] = int(buy_pressure / spread)

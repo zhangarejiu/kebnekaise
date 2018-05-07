@@ -22,7 +22,7 @@ class Indicator(object):
         self.log = self.Toolkit.log
         self.log(self.Toolkit.Greeting, self)
 
-    def broadway(self, roof=47):
+    def broadway(self, roof=53):
         """
         https://www.pokernews.com/pokerterms/broadway.htm
         """

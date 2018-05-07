@@ -42,8 +42,8 @@ class Wrapper(object):
                 self._filters[s].update(s_dict['filters'][2])
                 del self._filters[s]['filterType']
 
-            tmp = set(self._filters)
-            tmp = {s for s in tmp if float(self._filters[s]['stepSize']) < 1}
+            tmp = set(self._filters) - {('bnb', 'btc')}
+            #tmp = {s for s in tmp if float(self._filters[s]['stepSize']) < 1}
 
             if btc_only:
                 return {s for s in tmp if s[1] == 'btc'}
