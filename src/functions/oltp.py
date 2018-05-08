@@ -16,7 +16,7 @@ class Trader(object):
         self.Database = self.Indicator.Database  # maybe useful in the future...
         self.Wrapper = self.Indicator.Wrapper
         self.Brand = self.Wrapper.Brand
-        self._tracked, self._depth_threshold = {}, 3
+        self._tracked, self._depth_threshold = {}, 5
 
         self.Toolkit = self.Wrapper.Toolkit
         self.log = self.Toolkit.log
@@ -257,8 +257,7 @@ class Trader(object):
             price = (1 - margin / 100) * l_ask
             amount = self.Toolkit.Quota / price
             if balance[quote][0] <= 2 * self.Toolkit.Quota:
-                c = self.Toolkit.Quota / 10
-                amount = (balance[quote][0] - c) / price
+                amount = (balance[quote][0] - self.Toolkit.Quota / 10) / price
             params = {'amount': round(amount, 8), 'price': round(price, 8), 'symbol': symbol, }
 
             self.log('Current TICKER is: ' + str(ticker), self)

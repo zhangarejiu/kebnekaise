@@ -221,7 +221,7 @@ class Wrapper(object):
                 calling['retry'] -= 1
                 self.log('ERROR: retrying {} more time...'.format(retry), self)
                 self.log('(RESPONSE: {})'.format(tmp), self, 0)
-                time.sleep(5)
+                self.Toolkit.wait()
                 return self._request(**calling)
             else:
                 self.log(traceback.format_exc(), self)
