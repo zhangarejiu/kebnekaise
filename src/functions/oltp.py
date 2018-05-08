@@ -240,8 +240,8 @@ class Trader(object):
 
                     requirements = [
                         h_bid_depth > l_ask_depth > self._depth_threshold,
-                        spread < 1 - self.Wrapper.Fee,
                         buy_pressure > 100,
+                        spread < 1
                     ]
                     if False not in requirements:
                         forecast[symbol] = int(buy_pressure / spread)
