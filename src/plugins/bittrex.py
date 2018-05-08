@@ -193,7 +193,6 @@ class Wrapper(object):
 
         try:
             if debug:
-                self.log('', self)
                 self.log('_request(self, req_uri, signing, debug): ' + str(calling), self)
 
             # SECURITY DELAY: in order to NOT get your IP banned!
@@ -220,7 +219,7 @@ class Wrapper(object):
             if retry > 0:
                 calling['retry'] -= 1
                 self.log('ERROR: retrying {} more time...'.format(retry), self)
-                self.log('(RESPONSE: {})'.format(tmp), self)
+                self.log('(RESPONSE: {})'.format(tmp), self, 0)
                 time.sleep(5)
                 return self._request(**calling)
             else:

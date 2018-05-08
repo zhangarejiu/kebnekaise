@@ -97,7 +97,7 @@ class Toolkit(object):
             self.log(traceback.format_exc())
             return 0.
 
-    def log(self, message, caller=None):
+    def log(self, message, caller=None, lines_before=1):
         """
         Better starve to death before use this:
 
@@ -116,7 +116,9 @@ class Toolkit(object):
             else:
                 operation, component = 'Kebnekaise', 'TOOLKIT'
 
-            message = '{0} |{1}| {2}\n'.format(now_str, component, message)
+            tmp = ''.join('{0} |{1}| \n'.format(
+                now_str, component) for _ in range(lines_before))
+            message = tmp + '{0} |{1}| {2}\n'.format(now_str, component, message)
             with open(self.check(logfile + operation + '.log'), 'a') as fp:
                 fp.writelines([message])
         except:
@@ -237,18 +239,24 @@ class Auditor(object):
         """
 
         try:
-            self.log('', self)
             self.log('Starting test of the \'{0}\' API wrapper...'.format(self.Brand.upper()), self)
 
-            quiz = [self._symbols, self._ohlcv, self._history, self._book,
-                    self._balance, self._buy, self._orders, self._cancel, self._sell, ]
+            quiz = [
+                self._symbols,
+                self._ohlcv,
+                self._history,
+                self._book,
+                self._balance,
+                self._buy,
+                self._orders,
+                self._cancel,
+                self._sell,
+            ]
 
             for func in quiz[:[4, None][fire_mode]]:
                 if self._cache['errors'] == 0 and not self.Toolkit.halt():
-                    self.log('', self)
                     func()
 
-            self.log('', self)
             self.log('All tests DONE with {0} error(s). Exiting...'.format(self._cache['errors']), self)
             return self._cache['errors'] == 0
         except:
@@ -273,7 +281,6 @@ class Auditor(object):
                 self._cache['errors'] += 1
             self.log('The response was: ' + str(S), self)
 
-            self.log('', self)
             self.log('(Were found {0} symbols total)'.format(ls), self)
         except:
             self.log(traceback.format_exc(), self)
@@ -342,7 +349,6 @@ class Auditor(object):
             self.log('The response was: ' + str(self._cache['balance']), self)
 
             if self._cache['balance']['btc'][0] < self.Toolkit.Quota:
-                self.log('', self)
                 self.log('BALANCE ERROR: please make sure you have at least BTC ' + str(self.Toolkit.Quota) +
                          ' available in your account, in order to proceed with other tests.', self)
                 self._cache['errors'] += 1
@@ -445,7 +451,6 @@ class Auditor(object):
             orders = list(self.Wrapper.orders().items())
             self.log('(Current open orders are: {})'.format(orders), self)
 
-            self.log('', self)
             self.log('Canceling order # {}...'.format(oid), self)
             self.Wrapper.cancel(oid)
 

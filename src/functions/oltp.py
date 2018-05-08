@@ -29,8 +29,7 @@ class Trader(object):
 
         try:
             while not self.Toolkit.halt():
-                self.log('', self)
-                self.log('[ BEGIN: TRADE ]', self)
+                self.log('[ BEGIN: TRADE ]', self, 1)
                 t_delta = time.time()
 
                 report = self._report()
@@ -44,30 +43,24 @@ class Trader(object):
                     if len(broadway) > 0:
                         goal = self._chase(balance, self._forecast(broadway))
                         if goal not in [0, None]:
-                            self.log('', self)
                             self.log('An overall profit of ~' + str(goal) +
                                      '% is initially expected in this operation.', self)
                     else:
-                        self.log('', self)
                         self.log('No good symbols enough, waiting for ' +
                                  'better market conditions...', self)
                 else:
-                    self.log('', self)
                     self.log('Apparently your funds are insufficient to trade: make a ' +
                              'deposit/transfer to your account and try again. Thanks.', self)
+                self.log('(Selection {} checked.)'.format(list(broadway)), self)
 
                 t_delta = round(time.time() - t_delta, 3)
-                self.log('', self)
                 self.log('...probing done in {} seconds.'.format(t_delta), self)
-
-                self.log('', self)
                 self.log('[ END: TRADE ]', self)
 
                 delay = self.Toolkit.Orbit - t_delta / 60
                 self.Toolkit.wait([1, delay][delay > 1])
 
         except AssertionError:
-            self.log('', self)
             self.log('Unexpected error in "probe()" function: trying again...', self)
             self.probe()
         except:
@@ -109,14 +102,12 @@ class Trader(object):
             holdings_btc, holdings_usdt = list(zip(*holdings.values()))
             holdings = round(fee * sum(holdings_btc), 8), round(fee * sum(holdings_usdt), 2)
 
-            self.log('', self)
             self.log('REPORT: Your current BALANCE is: ' + str(balance), self)
-            self.log('That\'s equals approximately to BTC {0} (USD {1}).'.format(*holdings), self)
-            self.log('Your currently open orders are: ' + str(orders), self)
+            self.log('That\'s equals approximately to BTC {0} (USD {1}).'.format(*holdings), self, 0)
+            self.log('Your currently open orders are: ' + str(orders), self, 0)
             return balance, holdings, orders
 
         except AssertionError:
-            self.log('', self)
             self.log('Unexpected error in "_report()" function: moving forward...', self)
             return
         except:
@@ -128,7 +119,6 @@ class Trader(object):
         """
 
         try:
-            self.log('', self)
             self.log('Checking for outdated ({}+ minutes old) orders...'.format(stop_loss), self)
             t_delta = time.time()
 
@@ -139,7 +129,6 @@ class Trader(object):
             for oid, (amount, price, symbol) in orders.items():
                 if oid in self._tracked:
                     if t_delta - self._tracked[oid] > 60 * stop_loss:
-                        self.log('', self)
                         self.log('Outdated order # {} found, cancelling now...'.format(oid), self)
                         self.Wrapper.cancel(oid)
 
@@ -156,13 +145,10 @@ class Trader(object):
                 orders = self.Wrapper.orders()
                 assert orders is not None
             t_delta = round(time.time() - t_delta, 5)
-
-            self.log('', self)
             self.log('...check done in {} seconds.'.format(t_delta), self)
             return orders
 
         except AssertionError:
-            self.log('', self)
             self.log('Unexpected error in "_flush()" function: moving forward...', self)
             return
         except:
@@ -179,14 +165,12 @@ class Trader(object):
 
             profit_goal = 0
             if balance['btc'][0] > self.Toolkit.Quota:
-                self.log('', self)
                 self.log('STARTING TRADE PROCEDURES FOR {} ...'.format(chosen), self)
 
                 buying = self._buying(chosen, balance)
                 assert buying is not None
                 buy_price, oid = buying
 
-                self.log('', self)
                 self.log('The effective BUY price was: {:.8f}'.format(buy_price), self)
                 time.sleep(1)
 
@@ -197,15 +181,11 @@ class Trader(object):
                     assert selling is not None
                     sell_price, oid = selling
 
-                    self.log('', self)
                     self.log('The effective SELL price was: {:.8f}'.format(sell_price), self)
                     profit_goal = round(100 * (sell_price / buy_price - fix), 8)
                 else:
-                    self.log('', self)
                     self.log('BUY routine FAILED, sorry...', self)
                     self.Wrapper.cancel(oid)
-
-                self.log('', self)
                 self.log('TRADE PROCEDURES DONE FOR {} ...'.format(chosen), self)
             else:
                 self.log('Apparently all of your funds are engaged ' +
@@ -213,11 +193,10 @@ class Trader(object):
             return profit_goal
 
         except AssertionError:
-            self.log('', self)
             self.log('Unexpected error while trading {}, sorry...'.format(chosen), self)
 
             orders = list(self.Wrapper.orders().items())
-            self.log('(Current open orders are: {})'.format(orders), self)
+            self.log('(Current open orders are: {})'.format(orders), self, 0)
             return
         except:
             self.log(traceback.format_exc(), self)
@@ -228,7 +207,6 @@ class Trader(object):
         """
 
         try:
-            self.log('', self)
             self.log('The selection received was: ' + str(broadway), self)
             forecast = {}
 
@@ -245,15 +223,13 @@ class Trader(object):
                     ]
                     if False not in requirements:
                         forecast[symbol] = int(buy_pressure / spread)
-
-            self.log('', self)
             self.log('Current forecast is: ' + str(forecast), self)
 
             if len(forecast) > 0:
                 chosen = sorted(forecast.items(), key=lambda k: k[1])[-1][0]
-                self.log('The chosen symbol was: ' + str(chosen), self)
+                self.log('The chosen symbol was: ' + str(chosen), self, 0)
             else:
-                self.log('As there\'s no symbol to choose, I\'m doing nothing.', self)
+                self.log('As there\'s no symbol to choose, I\'m doing nothing.', self, 0)
                 return
             return chosen
         except:
@@ -285,9 +261,8 @@ class Trader(object):
                 amount = (balance[quote][0] - c) / price
             params = {'amount': round(amount, 8), 'price': round(price, 8), 'symbol': symbol, }
 
-            self.log('', self)
             self.log('Current TICKER is: ' + str(ticker), self)
-            self.log('Trying to BUY {0} by using parameters: {1} ...'.format(symbol, params), self)
+            self.log('Trying to BUY {0} by using parameters: {1} ...'.format(symbol, params), self, 0)
 
             buying = self.Wrapper.fire(**params)
             assert buying is not None
@@ -319,9 +294,8 @@ class Trader(object):
             price = (1 + margin / 100) * referential
             params = {'amount': round(amount, 8), 'price': round(price, 8), 'symbol': symbol, }
 
-            self.log('', self)
             self.log('REFERENCE price was: ' + str(referential), self)
-            self.log('Trying to SELL {0} by using parameters: {1} ...'.format(symbol, params), self)
+            self.log('Trying to SELL {0} by using parameters: {1} ...'.format(symbol, params), self, 0)
 
             selling = self.Wrapper.fire(**params)
             assert selling is not None

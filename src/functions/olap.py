@@ -22,7 +22,7 @@ class Indicator(object):
         self.log = self.Toolkit.log
         self.log(self.Toolkit.Greeting, self)
 
-    def broadway(self, roof=53):
+    def broadway(self, roof=50):
         """
         https://www.pokernews.com/pokerterms/broadway.htm
         """
@@ -34,33 +34,26 @@ class Indicator(object):
             if ls > roof:
                 symbols, ls = random.sample(symbols, roof), roof
 
-            self.log('', self)
             self.log('Selecting top symbols by performance from {} available...'.format(ls), self)
             t_delta = time.time()
 
             bw = {s: int(1E3 * self._major(s)) for s in symbols}
             bw = {s: i for s, i in bw.items() if i > 0}
-
-            self.log('', self)
             self.log('MAJOR: 1st selection is: ' + str(bw), self)
 
             bw = {s: int(1E3 * self._minor(s)) for s in bw}
             bw = {s: i for s, i in bw.items() if i > 0}
-
-            self.log('', self)
             self.log('MINOR: 2nd selection is: ' + str(bw), self)
 
             bw = dict(sorted(bw.items(), key=lambda k: k[1])[-5:])
             bw = [bw, {}][len(bw) < 5]
-
-            self.log('', self)
             self.log('FINAL: 3rd selection is: ' + str(bw), self)
 
             t_delta = time.time() - t_delta
             av_delta = t_delta / ls
             tt = round(t_delta, 3), round(av_delta, 5)
-
             self.log('...done in {0} s, average {1} s/symbol.'.format(*tt), self)
+
             return set(bw)
         except:
             self.log(traceback.format_exc(), self)

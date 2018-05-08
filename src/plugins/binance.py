@@ -47,9 +47,7 @@ class Wrapper(object):
                 self._filters[s].update(s_dict['filters'][1])
                 self._filters[s].update(s_dict['filters'][2])
                 del self._filters[s]['filterType']
-
             tmp = set(self._filters) - {('bnb', 'btc')}
-            #tmp = {s for s in tmp if float(self._filters[s]['stepSize']) < 1}
 
             if btc_only:
                 return {s for s in tmp if s[1] == 'btc'}
@@ -245,7 +243,6 @@ class Wrapper(object):
 
         try:
             if debug:
-                self.log('', self)
                 self.log('_request(self, req_uri, signing, debug): ' + str(calling), self)
 
             # SECURITY DELAY: in order to NOT get your IP banned!
@@ -275,7 +272,7 @@ class Wrapper(object):
             if retry > 0:
                 calling['retry'] -= 1
                 self.log('ERROR: retrying {} more time...'.format(retry), self)
-                self.log('(RESPONSE: {})'.format(tmp), self)
+                self.log('(RESPONSE: {})'.format(tmp), self, 0)
                 time.sleep(5)
                 return self._request(**calling)
             else:
