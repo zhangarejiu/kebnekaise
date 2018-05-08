@@ -38,11 +38,11 @@ class Indicator(object):
             t_delta = time.time()
 
             bw = {s: int(1E3 * self._major(s)) for s in symbols}
-            bw = {s: i for s, i in bw.items() if i > 0}
+            bw = {s: i for s, i in bw.items() if i > 2E3}
             self.log('MAJOR: 1st selection is: ' + str(bw), self)
 
             bw = {s: int(1E3 * self._minor(s)) for s in bw}
-            bw = {s: i for s, i in bw.items() if i > 0}
+            bw = {s: i for s, i in bw.items() if i > 6E3}
             self.log('MINOR: 2nd selection is: ' + str(bw), self)
 
             bw = dict(sorted(bw.items(), key=lambda k: k[1])[-5:])
