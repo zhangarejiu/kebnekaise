@@ -71,8 +71,8 @@ class Indicator(object):
             p_open, p_high, p_low, p_close, volume = ohlcv
             assert p_low > 1E-5 and volume > 100
 
-            latitude = 100 * (p_high / p_low - 1)
-            variation = 100 * (p_close / p_open - 1)
+            latitude = 100 * (p_high / p_low - 1)  # % points
+            variation = 100 * (p_close / p_open - 1)  # % points
             volatility = 1 + latitude - variation
 
             if variation < 0:
