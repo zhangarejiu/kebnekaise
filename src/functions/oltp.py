@@ -16,7 +16,7 @@ class Trader(object):
         self.Database = self.Indicator.Database  # maybe useful in the future...
         self.Wrapper = self.Indicator.Wrapper
         self.Brand = self.Wrapper.Brand
-        self._tracked, self._depth_threshold = {}, 5
+        self._tracked, self._depth_threshold = {}, 3
 
         self.Toolkit = self.Wrapper.Toolkit
         self.log = self.Toolkit.log

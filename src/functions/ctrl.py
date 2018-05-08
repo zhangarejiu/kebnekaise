@@ -55,7 +55,7 @@ class Toolkit(object):
 
         try:
             wrapper = {plg for plg in self.Plugins if plg.Brand == brand}.pop()
-            book = wrapper.book(symbol, 3)
+            book = wrapper.book(symbol, 5)
             assert book is not None
 
             l_ask, h_bid = max(book), min(book)

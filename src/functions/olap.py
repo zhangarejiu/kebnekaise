@@ -52,8 +52,8 @@ class Indicator(object):
             t_delta = time.time() - t_delta
             av_delta = t_delta / ls
             tt = round(t_delta, 3), round(av_delta, 5)
-            self.log('...done in {0} s, average {1} s/symbol.'.format(*tt), self)
 
+            self.log('...done in {0} s, average {1} s/symbol.'.format(*tt), self)
             return set(bw)
         except:
             self.log(traceback.format_exc(), self)
@@ -97,13 +97,17 @@ class Indicator(object):
             lh = len(history)
             assert lh > 0
 
-            tmp = {epoch: amount * price
-                   for epoch, amount, price in history}
-            lag = (max(tmp) - min(tmp)) / 3600
+            notionals = {
+                epoch: amount * price
+                for epoch, amount, price in history
+            }
+            lag = (max(notionals) - min(notionals)) / 3600  # hours
+            trend = round(sum(notionals.values()) / lag, 8)  # BTC per hour
+            frequency = lh / lag  # trades per hour
 
-            frequency = lh / lag
-            trend = round(sum(tmp.values()) / lag, 8)
-            return self.Toolkit.smooth(trend / frequency)
+            if trend < 0:
+                return self.Toolkit.smooth(frequency)
+            return self.Toolkit.smooth(1 / frequency)
 
         except AssertionError:
             return 0.
