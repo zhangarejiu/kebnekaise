@@ -28,15 +28,15 @@
     https://bittrex.com     
     https://poloniex.com
     
+##### UNKNOWN EXCHANGES (Seems like interesting, but I have not tested/implemented them yet: see 'src/plugins/sandbox/'):
+    https://www.okex.com
+    https://www.huobi.pro
+
 ##### MANUAL EXCHANGES (They have some cute features that I need, but technically are not suitable for algotrading):
+    https://bitcointrade.com.br
     https://www.bitstamp.net
     https://www.mercadobitcoin.com.br
-    https://bitcointrade.com.br
-
-##### UNKNOWN EXCHANGES (Seems like interesting, but I have not tested/implemented them yet: see 'src/plugins/sandbox/'):
-    https://www.livecoin.net
-    https://www.okex.com
-
+    
 ##### DOGSHIT EXCHANGES (Dangerous, suspicious rules or practices, serious problems found: AVOID them or LOSE your money!):
     https://www.bitfinex.com
     https://www.xbtce.com

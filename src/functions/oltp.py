@@ -113,7 +113,7 @@ class Trader(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def _flush(self, stop_loss=90):
+    def _flush(self, stop_loss=120):
         """
         Checking for rotten (unprofitable) orders.
         """
@@ -125,18 +125,20 @@ class Trader(object):
             orders = self.Wrapper.orders(0)
             assert orders is not None
 
-            c, k = 0, .97
+            c = 0
             for oid, (amount, price, symbol) in orders.items():
                 if oid in self._tracked:
                     if t_delta - self._tracked[oid] > 60 * stop_loss:
                         self.log('Outdated order # {} found, cancelling now...'.format(oid), self)
                         self.Wrapper.cancel(oid)
+                        del self._tracked[oid]
 
-                        ticker = self.Toolkit.ticker(self.Brand, symbol)
-                        if ticker is not None:
-                            self._selling(symbol, k * ticker[1])
-                        else:
-                            self._selling(symbol, k * price)
+                        selling = self._selling(symbol, price, -1)
+                        assert selling is not None
+                        sell_price, oid = selling
+
+                        self.log('The effective SELL price was: {:.8f}'.format(sell_price), self)
+                        self.log('(Order # {} created).'.format(oid), self)
                         c += 1
                 else:
                     self._tracked[oid] = t_delta
@@ -144,6 +146,7 @@ class Trader(object):
             if c > 0:
                 orders = self.Wrapper.orders()
                 assert orders is not None
+
             t_delta = round(time.time() - t_delta, 5)
             self.log('...check done in {} seconds.'.format(t_delta), self)
             return orders
@@ -176,12 +179,13 @@ class Trader(object):
 
                 if oid not in self.Wrapper.orders():
                     fix = 1 + 2 * self.Wrapper.Fee / 100
-
                     selling = self._selling(chosen, fix * buy_price)
                     assert selling is not None
-                    sell_price, oid = selling
 
+                    sell_price, oid = selling
                     self.log('The effective SELL price was: {:.8f}'.format(sell_price), self)
+                    self.log('(Order # {} created).'.format(oid), self)
+
                     profit_goal = round(100 * (sell_price / buy_price - fix), 8)
                 else:
                     self.log('BUY routine FAILED, sorry...', self)

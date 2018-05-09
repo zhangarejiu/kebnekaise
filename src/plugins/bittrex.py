@@ -71,7 +71,7 @@ class Wrapper(object):
                     [-1, 1][d['OrderType'] == 'BUY'] * d['Quantity'],
                     d['Price']) for d in req['result']]
             tmp.reverse()
-            return tmp[-99:]
+            return tmp[-50:]
 
         except KeyError:
             return

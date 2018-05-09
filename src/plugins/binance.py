@@ -84,7 +84,7 @@ class Wrapper(object):
             tmp = [(int(d['time'] / 1E3),
                     [1, -1][d['isBuyerMaker']] * float(d['qty']),
                     float(d['price'])) for d in req]
-            return tmp[-99:]
+            return tmp[-50:]
 
         except KeyError:
             return
@@ -150,15 +150,13 @@ class Wrapper(object):
             if amount > 0:
                 price -= r_price
                 amount += min_amount - r_amount
+                while price * amount < min_notional:
+                    amount += min_amount
             else:
                 price += min_price - r_price
                 amount -= r_amount
 
-            s = [-1, 1][amount > 0]
-            while abs(price * amount) < min_notional:
-                amount += s * min_amount
             price, amount = float(price), float(amount)
-
             tmp = {
                 'price': '{:.8f}'.format(price),
                 'symbol': ''.join(symbol).upper(),

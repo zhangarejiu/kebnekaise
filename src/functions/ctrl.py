@@ -24,8 +24,8 @@ class Toolkit(object):
         self.CParser = ConfigParser(allow_no_value=True)
         self.CParser.read(self.Path + '/bin/conf.ini')
         self.Plugins = self._plugins()
-        self.Orbit = 3  # minutes
-        self.Quota = 1E-3  # bitcoins
+        self.Orbit = 2  # minutes
+        self.Quota = 11E-4  # bitcoins
 
         self.Phi = (1 + 5 ** .5) / 2  # https://en.wikipedia.org/wiki/Golden_ratio
         self.Greeting = 'This component was successfully started.'
@@ -55,7 +55,7 @@ class Toolkit(object):
 
         try:
             wrapper = {plg for plg in self.Plugins if plg.Brand == brand}.pop()
-            book = wrapper.book(symbol, 5)
+            book = wrapper.book(symbol, 3)
             assert book is not None
 
             l_ask, h_bid = max(book), min(book)

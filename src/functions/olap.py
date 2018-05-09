@@ -38,11 +38,11 @@ class Indicator(object):
             t_delta = time.time()
 
             bw = {s: int(1E3 * self._major(s)) for s in symbols}
-            bw = {s: i for s, i in bw.items() if i > 2E3}
+            bw = {s: i for s, i in bw.items() if i > 0}
             self.log('MAJOR: 1st selection is: ' + str(bw), self)
 
             bw = {s: int(1E3 * self._minor(s)) for s in bw}
-            bw = {s: i for s, i in bw.items() if i > 6E3}
+            bw = {s: i for s, i in bw.items() if i > 0}
             self.log('MINOR: 2nd selection is: ' + str(bw), self)
 
             bw = dict(sorted(bw.items(), key=lambda k: k[1])[-5:])
@@ -73,11 +73,10 @@ class Indicator(object):
 
             latitude = 100 * (p_high / p_low - 1)  # % points
             variation = 100 * (p_close / p_open - 1)  # % points
-            volatility = 1 + latitude - variation
+            assert variation < 0
 
-            if variation < 0:
-                return self.Toolkit.smooth(volatility)
-            return self.Toolkit.smooth(1 / volatility)
+            volatility = latitude - abs(variation)
+            return self.Toolkit.smooth(volatility)
 
         except AssertionError:
             return 0.
@@ -97,16 +96,13 @@ class Indicator(object):
             lh = len(history)
             assert lh > 0
 
-            notionals = {
-                epoch: amount * price
-                for epoch, amount, price in history
-            }
+            notionals = {epoch: amount * price
+                         for epoch, amount, price in history}
             lag = (max(notionals) - min(notionals)) / 3600  # hours
             trend = round(sum(notionals.values()) / lag, 8)  # BTC per hour
-            frequency = lh / lag  # trades per hour
+            assert lag > 0 < trend
 
-            if trend < 0:
-                return self.Toolkit.smooth(frequency)
+            frequency = lh / lag  # trades per hour
             return self.Toolkit.smooth(1 / frequency)
 
         except AssertionError:
