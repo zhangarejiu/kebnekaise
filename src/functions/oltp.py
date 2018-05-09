@@ -73,10 +73,11 @@ class Trader(object):
         """
 
         try:
-            balance = self.Wrapper.balance()
-            assert balance is not None
+            clear = self._clear()
+            assert clear is not None
+            balance, orders = clear
 
-            orders = self._flush()
+            orders = self._flush(orders)
             assert orders is not None
 
             nakamoto = self.Toolkit.ticker(self.Brand, ('btc', 'usdt'))
@@ -113,17 +114,66 @@ class Trader(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def _flush(self, stop_loss=120):
+    def _clear(self):
+        """
+        Checking for idle money.
+        """
+
+        try:
+            self.log('Checking for altcoin balances not involved in ALIVE orders.', self)
+            t_delta = time.time()
+
+            symbols = self.Wrapper.symbols()
+            assert symbols is not None
+
+            balance = self.Wrapper.balance()
+            assert balance is not None
+
+            orders = self.Wrapper.orders()
+            assert orders is not None
+
+            c, engaged = 0, {s[0] for a, p, s in orders.values()}
+            for currency, (available, _) in balance.items():
+                if currency not in engaged:
+                    symbol = currency, 'btc'
+
+                    if symbol in symbols:
+                        ticker = self.Toolkit.ticker(self.Brand, symbol)
+                        assert ticker is not None
+
+                        l_ask, h_bid, _ = ticker
+                        if available * h_bid > 1E-3:
+                            self.log('Idle money found for: ' + str(symbol), self)
+
+                            selling = self._selling(symbol, l_ask, 0)
+                            assert selling is not None
+                            sell_price, oid = selling
+
+                            self.log('The effective SELL price was: {:.8f}'.format(sell_price), self)
+                            self.log('(Order # {} created).'.format(oid), self)
+                            c += 1
+            if c > 0:
+                orders = self.Wrapper.orders()
+                assert orders is not None
+
+            t_delta = round(time.time() - t_delta, 5)
+            self.log('...check done in {} seconds.'.format(t_delta), self)
+            return balance, orders
+
+        except AssertionError:
+            self.log('Unexpected error in "_clear()" function: moving forward...', self)
+            return
+        except:
+            self.log(traceback.format_exc(), self)
+
+    def _flush(self, orders, stop_loss=60):
         """
         Checking for rotten (unprofitable) orders.
         """
 
         try:
-            self.log('Checking for outdated ({}+ minutes old) orders...'.format(stop_loss), self)
+            self.log('Checking for OUTDATED ({}+ minutes old) orders...'.format(stop_loss), self)
             t_delta = time.time()
-
-            orders = self.Wrapper.orders(0)
-            assert orders is not None
 
             c = 0
             for oid, (amount, price, symbol) in orders.items():
