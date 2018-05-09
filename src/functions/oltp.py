@@ -166,7 +166,7 @@ class Trader(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def _flush(self, orders, stop_loss=60):
+    def _flush(self, orders, stop_loss=120):
         """
         Checking for rotten (unprofitable) orders.
         """
@@ -270,11 +270,9 @@ class Trader(object):
                     l_ask, h_bid, [l_ask_depth, h_bid_depth, buy_pressure] = ticker
                     spread = 100 * (l_ask / h_bid - 1)
 
-                    requirements = [
-                        h_bid_depth > l_ask_depth > self._depth_threshold,
-                        buy_pressure > 100,
-                        spread < 1
-                    ]
+                    requirements = [spread < 1,
+                                    buy_pressure > 100,
+                                    h_bid_depth > l_ask_depth > self._depth_threshold]
                     if False not in requirements:
                         forecast[symbol] = int(buy_pressure / spread)
             self.log('Current forecast is: ' + str(forecast), self)
