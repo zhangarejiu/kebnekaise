@@ -43,8 +43,8 @@ class Trader(object):
                     if len(broadway) > 0:
                         goal = self._chase(balance, broadway)
                         if goal not in [0, None]:
-                            self.log('An overall profit of ~ {:.8f} % is initially expected ' +
-                                     'in this operation.'.format(goal), self)
+                            self.log('An overall profit of ~ {:.8f} % is '.format(goal) +
+                                     'initially expected in this operation.', self)
                     else:
                         self.log('No good symbols enough, waiting for ' +
                                  'better market conditions...', self)
