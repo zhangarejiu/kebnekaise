@@ -51,7 +51,6 @@ class Trader(object):
                 else:
                     self.log('Apparently your funds are insufficient to trade: make a ' +
                              'deposit/transfer to your account and try again. Thanks.', self)
-                self.log('(Selection {} checked.)'.format(list(broadway)), self)
 
                 t_delta = time.time() - t_delta
                 self.log('...probing done in {:.8f} seconds.'.format(t_delta), self)
@@ -215,13 +214,12 @@ class Trader(object):
         chosen = None
 
         try:
-            self.log('', self)
             self.log('The selection received was: ' + str(broadway), self)
-
             chosen = sorted(broadway.items(), key=lambda k: k[1])[-1][0]
-            self.log('The chosen symbol was: ' + str(chosen), self)
 
+            self.log('The chosen symbol was: ' + str(chosen), self)
             profit_goal = 0
+
             if balance['btc'][0] > self.Toolkit.Quota:
                 self.log('STARTING TRADE PROCEDURES FOR {} ...'.format(chosen), self)
 
