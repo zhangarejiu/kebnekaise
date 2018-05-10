@@ -84,7 +84,7 @@ class Wrapper(object):
             tmp = [(int(d['time'] / 1E3),
                     [1, -1][d['isBuyerMaker']] * float(d['qty']),
                     float(d['price'])) for d in req]
-            return tmp[-50:]
+            return tmp[-100:]
 
         except KeyError:
             return

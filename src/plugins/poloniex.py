@@ -73,7 +73,7 @@ class Wrapper(object):
                     [-1, 1][d['type'] == 'buy'] * float(d['amount']),
                     float(d['rate'])) for d in req]
             tmp.reverse()
-            return tmp[-50:]
+            return tmp[-100:]
 
         except KeyError:
             return
