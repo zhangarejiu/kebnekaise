@@ -19,9 +19,9 @@
     https://www.amazon.com/dp/1118460146
     https://www.youtube.com/watch?v=48-aTzv1_5Q
     https://www.fscomeau.com/why-technical-analysis-is-bullshit
-	http://www.businessinsider.com/interview-with-cryptocurrency-pump-and-dump-telegram-group-admin-2017-12
-	https://theoutline.com/post/3074/inside-the-group-chats-where-people-pump-and-dump-cryptocurrency
-	https://bitfalls.com/2018/01/12/anatomy-pump-dump-group/
+    http://www.businessinsider.com/interview-with-cryptocurrency-pump-and-dump-telegram-group-admin-2017-12
+    https://theoutline.com/post/3074/inside-the-group-chats-where-people-pump-and-dump-cryptocurrency
+    https://bitfalls.com/2018/01/12/anatomy-pump-dump-group/
 
 ##### GOLD EXCHANGES (Pretty liquid market, 30+ symbols for BTC, tested and approved API: I love it!):
     https://www.binance.com   
@@ -38,12 +38,13 @@
     https://www.mercadobitcoin.com.br
     
 ##### DOGSHIT EXCHANGES (Dangerous, suspicious rules or practices, serious problems found: AVOID them or LOSE your money!):
-    https://www.bitfinex.com
-    https://www.xbtce.com
-    https://www.cryptopia.co.nz
-    https://bitcointoyou.com
-    https://www.okcoin.com
-    https://bter.com
-    https://www.btcc.com
-    https://hitbtc.com
-    https://foxbit.com.br
+    *bitfinex
+    *xbtce
+    *cryptopia
+    *bitcointoyou
+    *okcoin
+    *bter
+    *btcc
+    *hitbtc
+    *foxbit
+    *upbit
