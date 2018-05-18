@@ -7,14 +7,14 @@ class Trader(object):
     https://en.wikipedia.org/wiki/Online_transaction_processing
     """
 
-    def __init__(self, indicator):
+    def __init__(self, advisor):
         """
         Constructor method.
         """
 
-        self.Indicator = indicator
-        self.Database = self.Indicator.Database  # maybe useful in the future...
-        self.Wrapper = self.Indicator.Wrapper
+        self.Advisor = advisor
+        self.Database = self.Advisor.Database  # maybe useful in the future...
+        self.Wrapper = self.Advisor.Wrapper
         self.Brand = self.Wrapper.Brand
         self._tracked = {}
 
@@ -35,7 +35,7 @@ class Trader(object):
                 report = self._report()
                 assert report is not None
 
-                broadway = self.Indicator.broadway()
+                broadway = self.Advisor.broadway()
                 assert broadway is not None
 
                 balance, holdings, _ = report
@@ -165,7 +165,7 @@ class Trader(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def _flush(self, orders, stop_loss=120):
+    def _flush(self, orders, stop_loss=60):
         """
         Checking for rotten (unprofitable) orders.
         """
@@ -182,7 +182,11 @@ class Trader(object):
                         self.Wrapper.cancel(oid)
                         del self._tracked[oid]
 
-                        selling = self._selling(symbol, price, -1)
+                        ticker = self.Toolkit.ticker(self.Brand, symbol)
+                        assert ticker is not None
+
+                        l_ask, h_bid, _ = ticker
+                        selling = self._selling(symbol, l_ask, 0)
                         assert selling is not None
                         sell_price, oid = selling
 

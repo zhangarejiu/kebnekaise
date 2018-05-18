@@ -60,7 +60,7 @@ class Wrapper(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def history(self, symbol):
+    def history(self, symbol, limit=100):
         """
         """
 
@@ -73,7 +73,7 @@ class Wrapper(object):
                     [-1, 1][d['type'] == 'buy'] * float(d['amount']),
                     float(d['rate'])) for d in req]
             tmp.reverse()
-            return tmp[-100:]
+            return tmp[-limit:]
 
         except KeyError:
             return

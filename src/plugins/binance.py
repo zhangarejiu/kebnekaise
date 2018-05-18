@@ -72,7 +72,7 @@ class Wrapper(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def history(self, symbol):
+    def history(self, symbol, limit=100):
         """
         """
 
@@ -84,7 +84,7 @@ class Wrapper(object):
             tmp = [(int(d['time'] / 1E3),
                     [1, -1][d['isBuyerMaker']] * float(d['qty']),
                     float(d['price'])) for d in req]
-            return tmp[-100:]
+            return tmp[-limit:]
 
         except KeyError:
             return
@@ -150,17 +150,15 @@ class Wrapper(object):
             if amount > 0:
                 price -= r_price
                 amount += min_amount - r_amount
-                while price * amount < min_notional:
-                    amount += min_amount
             else:
                 price += min_price - r_price
                 amount -= r_amount
+            assert abs(price * amount) > min_notional
 
             price, amount = float(price), float(amount)
             tmp = {
                 'price': '{:.8f}'.format(price),
                 'symbol': ''.join(symbol).upper(),
-                'newClientOrderId': int(1E9 * time.time()),
                 'type': 'LIMIT',
                 'timeInForce': 'GTC',
                 'method': 'POST',
@@ -176,7 +174,7 @@ class Wrapper(object):
             req = self._request(('api/v3/order', tmp,))
             assert req is not None
 
-            oid = int(req['clientOrderId'])
+            oid = req['orderId']
             self._orders[oid] = symbol
             return oid, price
         except:
@@ -197,7 +195,7 @@ class Wrapper(object):
             assert req is not None
 
             tmp = {
-                int(d['clientOrderId']): (
+                d['orderId']: (
                     [-1, 1][d['side'] == 'BUY'] * (float(d['origQty']) - float(d['executedQty'])),
                     float(d['price']),
                     translate[d['symbol']]
@@ -217,14 +215,14 @@ class Wrapper(object):
         try:
             params = {
                 'symbol': ''.join(self._orders[order_id]).upper(),
-                'origClientOrderId': order_id,
+                'orderId': order_id,
                 'method': 'DELETE',
             }
             req = self._request(('api/v3/order', params,))
             assert req is not None
 
             time.sleep(5)  # to allow the site recognize newly created / canceled orders...
-            return -order_id
+            return '-' + str(order_id).upper()
 
         except AssertionError:
             return 0

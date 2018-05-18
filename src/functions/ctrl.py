@@ -25,7 +25,7 @@ class Toolkit(object):
         self.CParser.read(self.Path + '/bin/conf.ini')
         self.Plugins = self._plugins()
         self.Orbit = 2  # minutes
-        self.Quota = 11E-4  # bitcoins
+        self.Quota = 0.0015  # bitcoins
 
         self.Phi = (1 + 5 ** .5) / 2  # https://en.wikipedia.org/wiki/Golden_ratio
         self.Greeting = 'This component was successfully started.'
@@ -369,7 +369,7 @@ class Auditor(object):
             assert ticker is not None
 
             l_ask, h_bid, _ = ticker
-            price = .95 * h_bid
+            price = .99 * h_bid
             amount = self.Toolkit.Quota / price
             params.update({'amount': round(amount, 8), 'price': round(price, 8), })
             self.log('Putting a BUY order with parameters: ' + str(params), self)
@@ -436,7 +436,7 @@ class Auditor(object):
             assert ticker is not None
 
             l_ask, h_bid, _ = ticker
-            price = 1.05 * l_ask
+            price = 1.01 * l_ask
             amount = -1 * self.Toolkit.Quota
             params.update({'amount': round(amount, 8), 'price': round(price, 8), })
             self.log('Putting a SELL order with parameters: ' + str(params), self)

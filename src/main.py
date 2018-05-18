@@ -19,15 +19,15 @@ def operation(wrapper, olap_only=False):
 
         auditor = ctrl.Auditor(wrapper)
         database = dbms.Database(wrapper)
-        indicator = olap.Indicator(database)
-        trader = oltp.Trader(indicator)
+        advisor = olap.Advisor(database)
+        trader = oltp.Trader(advisor)
 
         if tlk.setup()['live_mode'].lower() == 'yes':
             if not olap_only:
                 trader.probe()
             else:
                 while not tlk.halt():
-                    indicator.broadway()
+                    advisor.broadway()
                     tlk.wait()
         else:
             auditor.test()
