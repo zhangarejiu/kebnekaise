@@ -61,14 +61,13 @@ class Advisor(object):
             assert symbols is not None
 
             if len(self._cache) > 0:
-                tmp = {s: i for s, i in self._cache.items() if i > 0}
+                tmp = {s: L[0] for s, L in self._cache.items() if L[0] > 0}
                 tmp = set(dict(sorted(tmp.items(), key=lambda k: k[1])[-20:]))
                 symbols = tmp | set(random.sample(symbols - tmp, 10))
             else:
                 self._cache = {s: [] for s in symbols}
             ls = len(symbols)
 
-            self.log('', self)
             self.log('Updating indexes for this {0} symbols: {1} ...'.format(ls, symbols), self)
             t_delta = time.time()
 
