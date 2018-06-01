@@ -51,6 +51,9 @@ class Database(object):
             else:  # write (only you)
                 assert type(data) == dict
                 self._dump(fqfn, {account: data})
+
+        except AssertionError:
+            return
         except:
             self.log(traceback.format_exc(), self)
 

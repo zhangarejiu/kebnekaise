@@ -24,8 +24,8 @@ class Toolkit(object):
         self.CParser = ConfigParser(allow_no_value=True)
         self.CParser.read(self.Path + '/bin/conf.ini')
         self.Plugins = self._plugins()
-        self.Orbit = 2  # minutes
-        self.Quota = 0.0015  # bitcoins
+        self.Orbit = 3  # minutes
+        self.Quota = 0.0011  # bitcoins
 
         self.Phi = (1 + 5 ** .5) / 2  # https://en.wikipedia.org/wiki/Golden_ratio
         self.Greeting = 'This component was successfully started.'
@@ -48,19 +48,17 @@ class Toolkit(object):
         except:
             self.log(traceback.format_exc())
 
-    def ticker(self, brand, symbol):
+    def ticker(self, brand, symbol, depth=3):
         """
         Just returns the current Lowest Ask / Highest Bid / Statistics for a given market & symbol.
         """
 
         try:
             wrapper = {plg for plg in self.Plugins if plg.Brand == brand}.pop()
-            book = wrapper.book(symbol, 3)
+            book = wrapper.book(symbol, depth)
             assert book is not None
 
-            l_ask, h_bid = max(book), min(book)
-            asks, bids = 0., 0.
-
+            l_ask, h_bid, asks, bids = max(book), min(book), 0., 0.
             for price, amount in book.items():
                 if amount > 0:
                     l_ask = min(l_ask, price)
@@ -69,10 +67,10 @@ class Toolkit(object):
                     h_bid = max(h_bid, price)
                     bids += price * amount
 
-            l_ask_depth = int(abs(l_ask * book[l_ask] / self.Quota))
-            h_bid_depth = int(abs(h_bid * book[h_bid] / self.Quota))
+            l_ask_weight = int(l_ask * book[l_ask] / self.Quota)
+            h_bid_weight = int(abs(h_bid * book[h_bid] / self.Quota))
             buy_pressure = 100 * (abs(bids) / asks - 1)
-            return l_ask, h_bid, [l_ask_depth, h_bid_depth, buy_pressure]
+            return l_ask, h_bid, [l_ask_weight, h_bid_weight, buy_pressure]
 
         except AssertionError:
             return
