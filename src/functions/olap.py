@@ -45,14 +45,9 @@ class Advisor(object):
             assert self._information() is not None
             assert self._knowledge() is not None
 
+            cache = self._cache.copy()
             alot = 'Tons of data! Omitted here but saved to disk...'
-            cache = {
-                'datasets': {alot},
-                'information': {alot},
-                'knowledge': self._cache['knowledge'],
-                'protected': self._cache['protected'],
-                'cycle': self._cache['cycle'],
-            }
+            cache.update({'datasets': {alot}, 'information': {alot}, })
             self.log('Current CACHE is: ' + str(cache), self)
 
             fittest = self._cache['protected'][0]
