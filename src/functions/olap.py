@@ -84,6 +84,10 @@ class Advisor(object):
             ls = len(symbols)
             assert ls > 0
 
+            if ls > 50:
+                ls = 50
+                symbols = set(random.sample(symbols, ls))
+
             self.log('DATASETS routine: updating for {} symbols...'.format(ls), self)
             t_delta = time.time()
 
