@@ -237,12 +237,11 @@ class Advisor(object):
                   for k, v in bw.items()}
             bw = sorted(bw.items(), key=lambda k: k[1])[-limit:]
 
-            if limit > 1:
-                return dict(bw)
-            elif len(bw) > 0:
-                return bw[0][0]
-            else:
-                pass
+            assert len(bw) > 0
+            return [bw[0][0], dict(bw)][limit > 1]
+
+        except AssertionError:
+            return
         except:
             self.log(traceback.format_exc(), self)
 
