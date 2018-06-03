@@ -17,8 +17,11 @@ class Advisor(object):
         self.Wrapper = self.Database.Wrapper
         self.Brand = self.Wrapper.Brand
 
-        self._cache = {'datasets': {}, 'information': {}, 'knowledge': {},
-                       'protected': (0, 1), 'cycle': 0, }
+        self._cache = {
+            'protected': (0, 1, 2),
+            'datasets': {}, 'information': {}, 'knowledge': {},
+            'profits': {}, 'cycle': 0,
+        }
         self._cardinality = 7
 
         self.Toolkit = self.Wrapper.Toolkit
@@ -62,7 +65,7 @@ class Advisor(object):
 
             t_delta = time.time() - t_delta
             self.log('...done in {:.8f} seconds.'.format(t_delta), self)
-            return bw
+            return [bw, {}][self._cache['cycle'] < 100]
 
         except AssertionError:
             return {}
@@ -230,7 +233,7 @@ class Advisor(object):
 
             bw = {s: sum(weights[n] * L[n] for n in rlw)
                   for s, L in self._cache['information'].items()}
-            bw = {k: int(1E6 * self.Toolkit.smooth(v))
+            bw = {k: int(1E3 * self.Toolkit.smooth(v))
                   for k, v in bw.items()}
             bw = sorted(bw.items(), key=lambda k: k[1])[-limit:]
 
@@ -248,15 +251,15 @@ class Advisor(object):
             balance, currency = strategy['balance']
 
             if currency == 'btc':  # buying
+                balance += [0, .1][balance < .1]
                 target = self._choose(strategy)
-                ticker = self._cache['datasets'][target][2]
 
+                ticker = self._cache['datasets'][target][2]
                 l_ask, h_bid, _ = ticker
                 strategy['balance'] = [balance / l_ask, target[0]]
 
             else:  # selling
                 target = currency, 'btc'
-
                 if target in self._cache['datasets']:
                     ticker = self._cache['datasets'][target][2]
                 else:
@@ -299,21 +302,18 @@ class Advisor(object):
 
             if not self._cache['cycle'] == 0:
                 # symbols of the last experiment were 'sold'...
-                profits = {idt: 100 * (strategy['balance'][0] - 1)
-                           for idt, strategy in self._cache['knowledge'].items()}
-                template = sorted(profits.items(), key=lambda k: k[1], reverse=True)
-
-                # calculating parents...
-                self._cache['protected'] = list(zip(*template[:2]))[0]
-                father = self._cache['knowledge'][self._cache['protected'][0]]
-                mother = self._cache['knowledge'][self._cache['protected'][1]]
-                self._cache['knowledge'][template[-1][0]] = self._crossover(father, mother)
-
-                # reseting balances...
-                self._cache['knowledge'] = {
-                    idt: {'weights': strategy['weights'], 'balance': [1., 'btc']}
+                self._cache['profits'] = {
+                    idt: 100 * (strategy['balance'][0] - 1)
                     for idt, strategy in self._cache['knowledge'].items()
                 }
+                ranking = sorted(self._cache['profits'].items(),
+                                  key=lambda k: k[1], reverse=True)
+
+                # calculating parents...
+                self._cache['protected'] = list(zip(*ranking[:2] + ranking[-1:]))[0]
+                father = self._cache['knowledge'][self._cache['protected'][0]]
+                mother = self._cache['knowledge'][self._cache['protected'][1]]
+                self._cache['knowledge'][ranking[-1][0]] = self._crossover(father, mother)
 
                 # buying symbols again...
                 self._cache['knowledge'] = {
