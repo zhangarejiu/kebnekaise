@@ -53,6 +53,7 @@ class Advisor(object):
             fittest = self._cache['protected'][0]
             strategy = self._cache['knowledge'][fittest]
             bw = self._choose(strategy, 5)
+            assert bw is not None
 
             self.log('Primary SELECTION is: ' + str(bw), self)
             bw = {k: v for k, v in bw.items() if v > 0}
