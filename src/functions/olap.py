@@ -281,7 +281,7 @@ class Advisor(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def _exchange(self, strategy):
+    def _exchange(self, strategy, reset=True):
         """
         Changes the status of the balance associated with a strategy, according
         to current market conditions (kind a trade simulation).
@@ -295,6 +295,7 @@ class Advisor(object):
                 ticker = self._cache['datasets'][target][2]
 
                 l_ask, h_bid, _ = ticker
+                balance = [balance, 1.][reset]
                 strategy['balance'] = [balance / l_ask, target[0]]
 
             else:  # selling
