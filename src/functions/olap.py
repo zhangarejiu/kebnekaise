@@ -63,6 +63,7 @@ class Advisor(object):
             return bw
 
         except AssertionError:
+            self.Database.query(self, self._cache)
             return {}
         except:
             self.log(traceback.format_exc(), self)
@@ -182,6 +183,9 @@ class Advisor(object):
             self.log('...done in {:.8f} s, average {:.8f} s/symbol.'
                      .format(t_delta, av_delta), self)
             return 0
+
+        except TypeError:
+            self._cache['knowledge'] = {}
         except:
             self.log(traceback.format_exc(), self)
 
