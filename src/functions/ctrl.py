@@ -77,23 +77,22 @@ class Toolkit(object):
         except:
             self.log(traceback.format_exc())
 
-    def smooth(self, wild, rounding=8):
+    def smooth(self, wild, sigmoid=True):
         """
-        Just taming wild numbers.
+        https://en.wikipedia.org/wiki/Natural_logarithm
+        https://en.wikipedia.org/wiki/Sigmoid_function
         """
 
         try:
             if wild in [0, None]:
                 return 0.
-
             mod = abs(wild)
-            side = wild / mod
-            coef = abs(math.log(mod))
 
-            return round(side * coef, rounding)
+            if sigmoid:
+                return wild / (1 + mod)
+            return (wild / mod) * abs(math.log(mod))
         except:
             self.log(traceback.format_exc())
-            return 0.
 
     def log(self, message, caller=None, lines_before=1):
         """

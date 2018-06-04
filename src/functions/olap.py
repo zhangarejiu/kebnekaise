@@ -22,13 +22,14 @@ class Advisor(object):
             'datasets': {}, 'information': {}, 'knowledge': {},
             'profits': {}, 'cycle': 0,
         }
+        self._omitted = 'Too many data to print: omitted here but saved to disk...'
         self._cardinality = 7
 
         self.Toolkit = self.Wrapper.Toolkit
         self.log = self.Toolkit.log
         self.log(self.Toolkit.Greeting, self)
 
-    def broadway(self):
+    def broadway(self, debugging=False):
         """
         https://www.pokernews.com/pokerterms/broadway.htm
         """
@@ -38,32 +39,47 @@ class Advisor(object):
             t_delta = time.time()
 
             tmp = self.Database.query(self)
-            if len(tmp) > 0:
-                self._cache.update(tmp)
+            if len(tmp) > 0: self._cache.update(tmp)
+            if debugging: self._explore(debugging)
 
             assert self._datasets() is not None
             assert self._information() is not None
             assert self._knowledge() is not None
 
-            cache = self._cache.copy()
-            alot = 'Tons of data! Omitted here but saved to disk...'
-            cache.update({'datasets': {alot}, 'information': {alot}, })
-            self.log('Current CACHE is: ' + str(cache), self)
+            self._cache['cycle'] += 1
+            self.Database.query(self, self._cache)
+            self._explore(debugging)
 
             fittest = self._cache['protected'][0]
             strategy = self._cache['knowledge'][fittest]
             bw = self._choose(strategy, 5)
-            self.log('Current BROADWAY is: ' + str(bw), self)
 
-            self._cache['cycle'] += 1
-            self.Database.query(self, self._cache)
+            self.log('Primary SELECTION is: ' + str(bw), self)
+            bw = {k: v for k, v in bw.items() if v > 0}
+            bw = [bw, {}][self._cache['cycle'] < 100 or len(bw) < 5]
 
             t_delta = time.time() - t_delta
             self.log('...done in {:.8f} seconds.'.format(t_delta), self)
-            return [bw, {}][self._cache['cycle'] < 100]
+            return bw
 
         except AssertionError:
             return {}
+        except:
+            self.log(traceback.format_exc(), self)
+
+    def _explore(self, debugging):
+        """
+        Prints the content of the 'self._cache' object
+        """
+
+        try:
+            omit = 'Too many data to print: omitted here but saved to disk...'
+            upd8 = {'datasets': {omit}, 'information': {omit}, }
+            cache = self._cache.copy()
+
+            if not debugging:
+                cache.update(upd8)
+            self.log('Current CACHE is: ' + str(cache), self)
         except:
             self.log(traceback.format_exc(), self)
 
@@ -157,6 +173,7 @@ class Advisor(object):
                 modified = random.sample(mutables, 1).pop()
                 self._cache['knowledge'][modified]['weights'][
                     random.randrange(self._cardinality)] = random.uniform(-1, 1)
+                self._cache['protected'] += modified,
             else:
                 self._generation()
 
@@ -221,26 +238,41 @@ class Advisor(object):
         except:
             self.log(traceback.format_exc(), self)
 
-    def _choose(self, strategy, limit=1):
+    def _generation(self):
         """
-        Uses the given strategy to choose symbols, with the available indicators.
+        Starting a new breed of trade agents.
         """
 
         try:
-            weights = strategy['weights']
-            rlw = range(len(weights))
+            # BUYING if self._cache['cycle'] == 0
+            # SELLING otherwise
+            self._cache['knowledge'] = {
+                k: self._exchange(v) for k, v in self._cache['knowledge'].items()}
 
-            bw = {s: sum(weights[n] * L[n] for n in rlw)
-                  for s, L in self._cache['information'].items()}
-            bw = {k: int(1E3 * self.Toolkit.smooth(v))
-                  for k, v in bw.items()}
-            bw = sorted(bw.items(), key=lambda k: k[1])[-limit:]
+            if not self._cache['cycle'] == 0:
+                # symbols of the last experiment were 'sold'...
+                self._cache['profits'] = {
+                    idt: 100 * (strategy['balance'][0] - 1)
+                    for idt, strategy in self._cache['knowledge'].items()
+                }
+                ranking = sorted(self._cache['profits'].items(),
+                                  key=lambda k: k[1], reverse=True)
 
-            assert len(bw) > 0
-            return [bw[0][0], dict(bw)][limit > 1]
+                # calculating parents...
+                self._cache['protected'] = list(zip(*ranking[:2] + ranking[-1:]))[0]
+                father = self._cache['knowledge'][self._cache['protected'][0]]
+                mother = self._cache['knowledge'][self._cache['protected'][1]]
 
-        except AssertionError:
-            return
+                # replacing 'worst' child...
+                self._cache['knowledge'][self._cache['protected'][2]] = self._crossover(father, mother)
+
+                # buying symbols again...
+                self._cache['knowledge'] = {
+                    k: self._exchange(v) for k, v in self._cache['knowledge'].items()}
+            else:
+                # symbols of the last experiment were 'bought'...
+                # ('else' clause placed here just for clarification)
+                pass
         except:
             self.log(traceback.format_exc(), self)
 
@@ -254,10 +286,9 @@ class Advisor(object):
             balance, currency = strategy['balance']
 
             if currency == 'btc':  # buying
-                balance += [0, .1][balance < .1]
                 target = self._choose(strategy)
-
                 ticker = self._cache['datasets'][target][2]
+
                 l_ask, h_bid, _ = ticker
                 strategy['balance'] = [balance / l_ask, target[0]]
 
@@ -272,6 +303,28 @@ class Advisor(object):
                 strategy['balance'] = [balance * h_bid, target[1]]
 
             return strategy
+        except:
+            self.log(traceback.format_exc(), self)
+
+    def _choose(self, strategy, limit=1):
+        """
+        Uses the given strategy to choose symbols, with the available indicators.
+        """
+
+        try:
+            weights = strategy['weights']
+            rlw = range(len(weights))
+
+            bw = {s: sum(weights[n] * self.Toolkit.smooth(L[n]) for n in rlw)
+                  for s, L in self._cache['information'].items()}
+            bw = {k: int(1E3 * v) for k, v in bw.items()}
+            bw = sorted(bw.items(), key=lambda k: k[1])[-limit:]
+
+            assert len(bw) > 0
+            return [bw[0][0], dict(bw)][limit > 1]
+
+        except AssertionError:
+            return
         except:
             self.log(traceback.format_exc(), self)
 
@@ -290,40 +343,5 @@ class Advisor(object):
                     for n in range(len(weights))
                 ]
             return {'weights': weights, 'balance': [1., 'btc']}
-        except:
-            self.log(traceback.format_exc(), self)
-
-    def _generation(self):
-        """
-        Starting a new breed of trade agents.
-        """
-
-        try:
-            # BUYING if self._cache['cycle'] == 0, SELLING otherwise
-            self._cache['knowledge'] = {
-                k: self._exchange(v) for k, v in self._cache['knowledge'].items()}
-
-            if not self._cache['cycle'] == 0:
-                # symbols of the last experiment were 'sold'...
-                self._cache['profits'] = {
-                    idt: 100 * (strategy['balance'][0] - 1)
-                    for idt, strategy in self._cache['knowledge'].items()
-                }
-                ranking = sorted(self._cache['profits'].items(),
-                                  key=lambda k: k[1], reverse=True)
-
-                # calculating parents...
-                self._cache['protected'] = list(zip(*ranking[:2] + ranking[-1:]))[0]
-                father = self._cache['knowledge'][self._cache['protected'][0]]
-                mother = self._cache['knowledge'][self._cache['protected'][1]]
-                self._cache['knowledge'][ranking[-1][0]] = self._crossover(father, mother)
-
-                # buying symbols again...
-                self._cache['knowledge'] = {
-                    k: self._exchange(v) for k, v in self._cache['knowledge'].items()}
-            else:
-                # symbols of the last experiment were 'bought'...
-                # ('else' clause placed here just for clarification)
-                pass
         except:
             self.log(traceback.format_exc(), self)

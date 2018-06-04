@@ -38,7 +38,9 @@ class Trader(object):
                 broadway = self.Advisor.broadway()
                 assert broadway is not None
 
+                self.log('Received SELECTION is: ' + str(broadway), self)
                 balance, holdings, _ = report
+
                 if holdings[0] > self.Toolkit.Quota:
                     if len(broadway) > 0:
                         goal = self._chase(balance, broadway)
