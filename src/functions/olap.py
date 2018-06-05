@@ -2,6 +2,8 @@ import random
 import time
 import traceback
 
+from statistics import stdev
+
 
 class Advisor(object):
     """
@@ -23,7 +25,7 @@ class Advisor(object):
             'profits': {}, 'cycle': 0,
         }
         self._omitted = 'Too many data to print: omitted here but saved to disk...'
-        self._cardinality = 7
+        self._cardinality = 11
 
         self.Toolkit = self.Wrapper.Toolkit
         self.log = self.Toolkit.log
@@ -50,18 +52,18 @@ class Advisor(object):
             self.Database.query(self, self._cache)
             self._explore(debugging)
 
-            fittest = self._cache['protected'][0]
-            strategy = self._cache['knowledge'][fittest]
-            bw = self._choose(strategy, 5)
-            assert bw is not None
+            [fit1, fit2], bw = self._cache['protected'][:2], {}
+            if self._cache['profits'][fit1] > 0 < self._cache['profits'][fit2]:
+                bw = self._choose(self._cache['knowledge'][fit1], 5)
+                assert bw is not None
 
             self.log('Primary SELECTION is: ' + str(bw), self)
             bw = {k: v for k, v in bw.items() if v > 0}
-            bw = [bw, {}][self._cache['cycle'] < 100 or len(bw) < 5]
+            bw = [bw, {}][self._cache['cycle'] < 100]
 
             t_delta = time.time() - t_delta
             self.log('...done in {:.8f} seconds.'.format(t_delta), self)
-            return bw
+            return [bw, {}][len(bw) < 5]
 
         except AssertionError:
             self.Database.query(self, self._cache)
@@ -199,11 +201,11 @@ class Advisor(object):
             ohlcv = self._cache['datasets'][symbol][0]
             p_open, p_high, p_low, p_close, volume = ohlcv
 
-            amplitude = 100 * (p_high / p_low - 1)
+            falling = 100 * (p_close / p_high - 1)
+            climbing = 100 * (p_close / p_low - 1)
             variation = 100 * (p_close / p_open - 1)
-            volatility = amplitude - abs(variation)
 
-            return amplitude, variation, volatility
+            return volume, falling, climbing, variation
         except:
             self.log(traceback.format_exc(), self)
 
@@ -214,17 +216,19 @@ class Advisor(object):
 
         try:
             history = self._cache['datasets'][symbol][1]
-            tmp = {epoch: amount * price for epoch, amount, price in history}
+            notionals = {epoch: amount * price for epoch, amount, price in history}
+            nval = notionals.values()
 
-            hours = (max(tmp) - min(tmp)) / 3600
+            trend, frequency, std = 0., 0., 0.
+            hours = (max(notionals) - min(notionals)) / 3600
             trades = len(history)
-            trend, frequency = 0., 0.
 
             if hours > 0:
-                trend = sum(tmp.values()) / hours
+                trend = sum(nval) / hours
                 frequency = trades / hours
+                std = stdev(nval)
 
-            return trend, frequency
+            return trend, frequency, std
         except:
             self.log(traceback.format_exc(), self)
 
@@ -235,11 +239,13 @@ class Advisor(object):
 
         try:
             ticker = self._cache['datasets'][symbol][2]
-
             l_ask, h_bid, [l_ask_weight, h_bid_weight, buy_pressure] = ticker
-            spread = 100 * (l_ask / h_bid - 1)
 
-            return buy_pressure, spread
+            spread = 100 * (l_ask / h_bid - 1)
+            abs_weight = l_ask_weight / self.Toolkit.Quota
+            rel_weight = h_bid_weight / l_ask_weight
+
+            return buy_pressure, spread, abs_weight, rel_weight
         except:
             self.log(traceback.format_exc(), self)
 
@@ -319,10 +325,12 @@ class Advisor(object):
 
         try:
             weights = strategy['weights']
-            rlw = range(len(weights))
 
-            bw = {s: sum(weights[n] * self.Toolkit.smooth(L[n]) for n in rlw)
-                  for s, L in self._cache['information'].items()}
+            bw = {
+                s: sum(weights[n] * self.Toolkit.smooth(L[n])
+                       for n in range(self._cardinality))
+                for s, L in self._cache['information'].items()
+            }
             bw = {k: int(1E3 * v) for k, v in bw.items()}
             bw = sorted(bw.items(), key=lambda k: k[1])[-limit:]
 
@@ -346,7 +354,7 @@ class Advisor(object):
             if None not in [f_strategy, m_strategy]:
                 weights = [
                     (f_strategy['weights'][n] + m_strategy['weights'][n]) / 2
-                    for n in range(len(weights))
+                    for n in range(self._cardinality)
                 ]
             return {'weights': weights, 'balance': [1., 'btc']}
         except:
