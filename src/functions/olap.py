@@ -19,13 +19,13 @@ class Advisor(object):
         self.Wrapper = self.Database.Wrapper
         self.Brand = self.Wrapper.Brand
 
+        self._cardinality = 11
         self._cache = {
-            'protected': (0, 1, 2),
+            'cycle': 0, 'protected': (0, 1, 2),
             'datasets': {}, 'information': {}, 'knowledge': {},
-            'profits': {}, 'cycle': 0,
+            'profits': {i: 0 for i in range(self._cardinality)},
         }
         self._omitted = 'Too many data to print: omitted here but saved to disk...'
-        self._cardinality = 11
 
         self.Toolkit = self.Wrapper.Toolkit
         self.log = self.Toolkit.log
@@ -166,7 +166,8 @@ class Advisor(object):
 
         try:
             if len(self._cache['knowledge']) == 0:
-                self._cache['knowledge'] = {i: self._crossover() for i in range(10)}
+                self._cache['knowledge'] = {i: self._crossover()
+                                            for i in range(self._cardinality)}
             ls = len(self._cache['knowledge'])
 
             self.log('KNOWLEDGE: updating for {} strategies...'.format(ls), self)
@@ -241,11 +242,11 @@ class Advisor(object):
             ticker = self._cache['datasets'][symbol][2]
             l_ask, h_bid, [l_ask_weight, h_bid_weight, buy_pressure] = ticker
 
-            spread = 100 * (l_ask / h_bid - 1)
-            abs_weight = l_ask_weight / self.Toolkit.Quota
-            rel_weight = h_bid_weight / l_ask_weight
+            abs_spread = l_ask - h_bid
+            rel_spread = 100 * (l_ask / h_bid - 1)
+            relative_weight = h_bid_weight / max(l_ask_weight, 1)
 
-            return buy_pressure, spread, abs_weight, rel_weight
+            return buy_pressure, abs_spread, rel_spread, relative_weight
         except:
             self.log(traceback.format_exc(), self)
 
@@ -313,8 +314,10 @@ class Advisor(object):
 
                 l_ask, h_bid, _ = ticker
                 strategy['balance'] = [balance * h_bid, target[1]]
-
             return strategy
+
+        except KeyError:
+            return
         except:
             self.log(traceback.format_exc(), self)
 
@@ -324,6 +327,7 @@ class Advisor(object):
         """
 
         try:
+            assert strategy is not None
             weights = strategy['weights']
 
             bw = {
