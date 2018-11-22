@@ -24,8 +24,7 @@ class Toolkit(object):
         self.CParser = ConfigParser(allow_no_value=True)
         self.CParser.read(self.Path + '/bin/conf.ini')
         self.Plugins = self._plugins()
-        self.Orbit = 3  # minutes
-        self.Quota = 0.0011  # bitcoins
+        self.Quota = 0.003  # bitcoins
 
         self.Phi = (1 + 5 ** .5) / 2  # https://en.wikipedia.org/wiki/Golden_ratio
         self.Greeting = 'This component was successfully started.'
@@ -48,36 +47,37 @@ class Toolkit(object):
         except:
             self.log(traceback.format_exc())
 
-    def ticker(self, brand, symbol, depth=3):
+    def ticker(self, orders_book, depth=3):
         """
         Just returns the current Lowest Ask / Highest Bid / Statistics for a given market & symbol.
         """
 
         try:
-            wrapper = {plg for plg in self.Plugins if plg.Brand == brand}.pop()
-            book = wrapper.book(symbol, depth)
-            assert book is not None
+            assert orders_book is not None
 
-            l_ask, h_bid, asks, bids = max(book), min(book), 0., 0.
-            for price, amount in book.items():
-                if amount > 0:
-                    l_ask = min(l_ask, price)
-                    asks += price * amount
-                else:
-                    h_bid = max(h_bid, price)
-                    bids += price * amount
+            l_ask = min(price for price, amount in orders_book.items() if amount > 0)
+            h_bid = max(price for price in orders_book if price < l_ask)
+            h_ask, l_bid = (1 + depth / 100) * l_ask, (1 - depth / 100) * h_bid
 
-            l_ask_weight = int(l_ask * book[l_ask] / self.Quota)
-            h_bid_weight = int(abs(h_bid * book[h_bid] / self.Quota))
-            buy_pressure = 100 * (abs(bids) / asks - 1)
-            return l_ask, h_bid, [l_ask_weight, h_bid_weight, buy_pressure]
+            notionals = {'asks': [], 'bids': []}
+            for price, amount in sorted(orders_book.items()):
+                if l_bid <= price <= h_ask:
+                    if amount > 0:
+                        notionals['asks'].append(price * amount)
+                    else:
+                        notionals['bids'].append(price * -amount)
+
+            l_ask_weight = int(notionals['asks'][0] / self.Quota)
+            h_bid_weight = int(notionals['bids'][-1] / self.Quota)
+            buy_pressure = 100 * (sum(notionals['bids']) / sum(notionals['asks']) - 1)
+            return l_ask, h_bid, (l_ask_weight, h_bid_weight, buy_pressure)
 
         except AssertionError:
             return
         except:
             self.log(traceback.format_exc())
 
-    def smooth(self, wild, sigmoid=True):
+    def smooth(self, wild, sigmoid=False):
         """
         https://en.wikipedia.org/wiki/Natural_logarithm
         https://en.wikipedia.org/wiki/Sigmoid_function
@@ -129,7 +129,7 @@ class Toolkit(object):
 
         try:
             delay = int(60 * minutes)
-            delay = [delay, 60][delay < 60]
+            delay = [delay, 30][delay < 30]
             c, r = 0, random.randrange(delay - 5, delay + 5)
 
             while not (self.halt() or c == r):
@@ -362,7 +362,7 @@ class Auditor(object):
             self.log('Testing [FIRE:buy] functionality...', self)
 
             params = {'symbol': self._cache['symbols'][3]}
-            ticker = self.Toolkit.ticker(self.Brand, params['symbol'])
+            ticker = self.Toolkit.ticker(self.Wrapper.book(**params))
             assert ticker is not None
 
             l_ask, h_bid, _ = ticker
@@ -429,7 +429,7 @@ class Auditor(object):
             self.log('Testing [FIRE:sell] functionality...', self)
 
             params = {'symbol': ('btc', 'usdt')}
-            ticker = self.Toolkit.ticker(self.Brand, params['symbol'])
+            ticker = self.Toolkit.ticker(self.Wrapper.book(**params))
             assert ticker is not None
 
             l_ask, h_bid, _ = ticker

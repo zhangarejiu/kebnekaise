@@ -205,8 +205,7 @@ class Wrapper(object):
                 post_data = url.encode()
 
                 sign = hmac.new(self.Secret, post_data, digestmod=hashlib.sha512).hexdigest()
-                params = {'url': url, 'data': post_data,
-                          'headers': {'apisign': sign, }, }
+                params = {'url': url, 'headers': {'apisign': sign, }, }
                 tmp = json.loads(request.urlopen(request.Request(**params)).read().decode())
             else:
                 # type(req_uri) == str

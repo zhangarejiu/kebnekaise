@@ -1,3 +1,6 @@
+#todo
+
+
 import time
 import traceback
 
@@ -58,7 +61,7 @@ class Trader(object):
                 self.log('...probing done in {:.8f} seconds.'.format(t_delta), self)
                 self.log('[ END: TRADE ]', self)
 
-                self.Toolkit.wait(self.Toolkit.Orbit - t_delta / 60)
+                self.Toolkit.wait(1 / 2)
 
         except AssertionError:
             self.log('Unexpected error in "probe()" function: trying again...', self)

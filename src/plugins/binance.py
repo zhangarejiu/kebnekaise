@@ -42,11 +42,12 @@ class Wrapper(object):
             assert req is not None
 
             for s_dict in req['symbols']:
-                s = s_dict['baseAsset'].lower(), s_dict['quoteAsset'].lower()
-                self._filters[s] = s_dict['filters'][0]
-                self._filters[s].update(s_dict['filters'][1])
-                self._filters[s].update(s_dict['filters'][2])
-                del self._filters[s]['filterType']
+                if s_dict['status'] == 'TRADING':
+                    s = s_dict['baseAsset'].lower(), s_dict['quoteAsset'].lower()
+                    self._filters[s] = s_dict['filters'][0]
+                    self._filters[s].update(s_dict['filters'][1])
+                    self._filters[s].update(s_dict['filters'][2])
+                    del self._filters[s]['filterType']
             tmp = set(self._filters) - {('bnb', 'btc')}
 
             if btc_only:

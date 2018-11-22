@@ -19,7 +19,7 @@ class Wrapper(object):
         Constructor method.
         """
 
-        self.Brand, self.Fee = 'poloniex', .25
+        self.Brand, self.Fee = 'poloniex', .2
         self.fmt = '%Y-%m-%d %H:%M:%S'
 
         self.Toolkit = toolkit
